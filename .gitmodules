@@ -1,0 +1,6 @@
+[submodule "third_party/dpdk"]
+	path = third_party/dpdk
+	url = https://github.com/sands-lab/dpdk.git
+[submodule "third_party/vcl"]
+	path = third_party/vcl
+	url = https://github.com/vectorclass/version2
