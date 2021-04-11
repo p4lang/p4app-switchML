@@ -41,6 +41,7 @@ Stats::~Stats() {
 
 void Stats::InitStats(WorkerTid num_worker_threads) {
     LOG_IF(FATAL, total_pkts_sent_ != nullptr) << "Trying to initialize stats twice";
+    this->num_worker_threads_ = num_worker_threads;
     total_pkts_sent_ = new uint64_t[num_worker_threads];
     wrong_pkts_received_ = new uint64_t[num_worker_threads];
     correct_pkts_received_ = new uint64_t[num_worker_threads];

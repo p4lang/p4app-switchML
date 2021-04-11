@@ -108,7 +108,7 @@ ifeq ($(DPDK), 1)
 # of our source files. So we do not need to compile them ourselves.
 # Though it does use the standard variable names such as CXXFLAGS and LDFLAGS when 
 # it compiles our sources
-default_: _postbuild $(INCDIR_) $(LIBDIR_)
+default_: _postbuild $(INCDIR_) $(LIBDIR_) config_
 	$(Q)$(MAKE) clean
 	cp $(RTE_OUTPUT)/$(LIB) $(LIBDIR_)/
 	$(RM) -r $(RTE_OUTPUT)

@@ -121,9 +121,12 @@ class Stats {
         this->timeouts_num_[wtid] += to_add;
     }
 #endif
-    const WorkerTid num_worker_threads_;
+    
 
   private:
+    /** The number of worker threads in the configuration */
+    WorkerTid num_worker_threads_;
+
     /** The total number of jobs submitted to the context */
     uint64_t jobs_submitted_num_;
 
