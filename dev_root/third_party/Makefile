@@ -27,6 +27,8 @@ endif
 
 .PHONY: dpdk
 dpdk:
+	cd dpdk && git reset --hard
+	cd dpdk && git apply ../dpdk.patch
 ifeq ($(MLX5),1)
 	sed -i 's/CONFIG_RTE_LIBRTE_MLX5_PMD=n/CONFIG_RTE_LIBRTE_MLX5_PMD=y/' dpdk/config/common_base
 	sed -i 's/CONFIG_RTE_LIBRTE_MLX4_PMD=y/CONFIG_RTE_LIBRTE_MLX4_PMD=n/' dpdk/config/common_base
@@ -38,6 +40,10 @@ endif
 endif
 	$(MAKE) -C dpdk defconfig T=x86_64-native-linuxapp-gcc
 	$(MAKE) -C dpdk EXTRA_CFLAGS="-fPIC $(CXXFLAGS)" -j
+
+.PHONY: vcl
+vcl:
+	# nothing to do for vcl
 
 .PHONY: clean
 clean:
