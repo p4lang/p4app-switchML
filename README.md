@@ -10,7 +10,7 @@ To run SwitchML you need to:
 - run the Python controller (see README file in the [controller folder](dev_root/switch_controller)
 - compile and run the end-host program using the end-host library (see README file in the [library folder](dev_root/client_lib)
 
-The [example](dev_root/example) folder provides a simple program that shows how to use the APIs. 
+The [examples](dev_root/examples) folder provides simple programs that show how to use the APIs.
 
 ## Repo organization
 This repository is organized as follows:
@@ -22,6 +22,7 @@ dev_root:
   ┣ switch_controller: controller program
   ┣ client_lib: end-host library
   ┣ examples: set of example programs
+  ┣ benchmarks: programs used to test raw performance
   ┣ frameworks_integration: code to integrate with ML frameworks
   ┗ third_party: third party software
 ```
@@ -43,7 +44,7 @@ This project welcomes contributions and suggestions.
 To learn more about making a contribution to SwitchML, please see our [Contribution](CONTRIBUTING.md) page.
 
 ## The Team
-SwitchML is a project driven by the P4.org community and is currently  maintained by Amedeo Sapio, Omar Alama, Marco Canini, Jacob Nelson, ... 
+SwitchML is a project driven by the P4.org community and is currently maintained by Amedeo Sapio, Omar Alama, Marco Canini, Jacob Nelson.
 
 ## License
 SwitchML is released with an Apache License 2.0, as found in the [LICENSE](LICENSE) file.

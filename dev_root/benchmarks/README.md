@@ -1,17 +1,16 @@
 # Benchmarks
 
-This directory includes multiple benchmarks to test and measure the performance of the different components of SwitchML
-or of the system as a whole. 
+This directory includes multiple benchmarks to test and measure the performance of the different components of SwitchML or of the system as a whole.
 
-The benchmarks should be the go to tool that ensures that the performance and the accuracy of SwitchML remains as expected after any change.
+The benchmarks should be the go-to tool that ensures that the performance and the accuracy of SwitchML remains as expected after any change.
 
 ## Benchmarks list
 
 | Example | Brief | Compilation flags |
 |--|--|--|
-| allreduce_benchmark | The most wholistic benchmark as it actually performs allreduce jobs thus testing the whole system. | DEBUG DPDK MLX5 MLX4 |
+| allreduce_benchmark | The most complete benchmark, as it actually performs allreduce jobs thus testing the whole system. | DEBUG DPDK MLX5 MLX4 |
 
-All examples require that the client library be compiled and that the switchml configuration file is present when running.
+All examples require that the client library is compiled and that the SwitchML configuration file is present when running.
 
 ## Compiling
 

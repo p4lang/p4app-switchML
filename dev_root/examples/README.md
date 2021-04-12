@@ -10,11 +10,11 @@ This directory includes multiple simplified well commented examples to show how 
 
 ## Compiling
 
-All examples require that the client library be compiled and that the switchml configuration file is present when running.
+All examples require that the client library be compiled and that the SwitchML configuration file is present when running.
 
-Also note that linking the client library code happens here..
+Also note that linking the client library code happens here.
 So you usually need to provide the same compilation flags that you used when you compiled the client library in addition to the ones that control the example itself.
-This allows the Makefile to link to the appropriate libraries for dpdk, rdma..etc.
+This allows the Makefile to link to the appropriate libraries for DPDK, RDMA, etc.
 
 To compile an example, simply run:
 
