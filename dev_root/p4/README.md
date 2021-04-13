@@ -3,24 +3,24 @@
 The SwitchML P4 program is written in P4_16 for the [Tofino Native Architecture (TNA)](https://github.com/barefootnetworks/Open-Tofino) and the controller uses the Barefoot Runtime Interface (BRI) to program the switch.
 
 ## Requirements
-The p4 code requires Intel P4 Studio 9.2.0 or above.
+The p4 code has been tested on Intel P4 Studio 9.2.0.
 
-For details on how to obtain and compile P4 Studio, we refer you to the official [Intel documentation](https://www.intel.com/content/www/us/en/products/network-io/programmable-ethernet-switch.html).
+For details on how to obtain and compile P4 Studio, we refer you to the official [Intel documentation](https://www.intel.com/content/www/us/en/products/network-io/programmable-ethernet-switch.html) and the P4 Studio README file.
 
 The control plane requires python 3.8, so P4 Studio must be compiled using python 3, so that the generated Barefoot Runtime libraries will be compatible with python 3.
 
 ## Running the P4 program
 
-1. Build the P4 code using the `p4_build.sh` script like this (follow the Intel documentation for detailed instructions):
+1. Build the P4 code. Detailed instructions are available in the Intel documentation (_Compiler User Guide_ document). If you use the `p4_build.sh` script, you can compile the P4 program with the following command:
 
     ```bash
-    P4_NAME=SwitchML ./p4_build.sh  switchml.p4
+    P4_NAME=SwitchML p4_build.sh  switchml.p4
     ```
 
 2. Run the reference drivers application:
 
     ```bash
-    ./run_switchd.sh  -p SwitchML
+    $SDE/run_switchd.sh  -p SwitchML
     ```
 
 3. When switchd is started, run the control plane program (either on a switch or on a separate server).
