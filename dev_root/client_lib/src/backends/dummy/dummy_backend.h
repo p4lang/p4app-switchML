@@ -10,10 +10,13 @@
 #include <thread>
 #include <vector>
 
-#include "../../common.h"
-#include "../../backend.h"
+#include "common.h"
+#include "backend.h"
 
 namespace switchml {
+
+// Forward declare DummyWorkerThread so we add it as a member variable
+class DummyWorkerThread;
 
 /**
  * @brief A backend for debugging which simulates communication by sleeping.
@@ -28,7 +31,7 @@ class DummyBackend : public switchml::Backend {
   public:
 
     /**
-     * @brief A struct that describes the logical unit of transmission in the dummy backend (The DummyPacket).
+     * @brief A struct that describes the unit of transmission in the dummy backend (The DummyPacket).
      * 
      * A **JobSlice** is divided by the worker thread to multiple **DummyPacket* structs which then get sent then received using the backend.
      */
@@ -38,11 +41,17 @@ class DummyBackend : public switchml::Backend {
        * Accessed only by the worker thread that created the message.
        * Can be calculated as packet offset from the job slice divided by the packet size 
        */
-      uint64_t packet_index;
+      uint64_t pkt_id;
       /** The identifier of the job from which this message came from */
       JobId job_id;
-      /** The tensor describing the message's data */
-      Tensor tensor;
+      /** The number of elements in the packet */
+      Numel numel;
+      /** The data type of the elements */
+      DataType data_type;
+      /** Pointer to data that is supposed to be outstanding (in the network) */
+      void* entries_ptr;
+      /** Pointer to extra info that is supposed to be outstanding (in the network) */
+      void* extra_info_ptr;
     };
 
     /**
@@ -118,8 +127,8 @@ class DummyBackend : public switchml::Backend {
   private:
     void ProcessPacket(DummyPacket& msg);
 
-    /** An array that stores pointers to all worker threads */
-    std::thread* worker_threads_;
+    /** Stores all of the dummy worker threads */
+    std::vector<DummyWorkerThread> worker_threads_;
 
     /** 
      * An array of vectors indexed by worker thread ids.

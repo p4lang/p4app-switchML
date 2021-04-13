@@ -113,7 +113,7 @@ void BuildPacket(rte_mbuf* mbuf, JobId job_id, uint32_t pkt_id,
 
     // Preprocess the packet (Copying/quantizing is done here)
     DpdkBackend::DpdkPacketElement* entries_ptr = reinterpret_cast<DpdkBackend::DpdkPacketElement*>(switchml_pkt_hdr+1);
-    void* extra_info_ptr = entries_ptr + sizeof(DpdkBackend::DpdkPacketElement) * packet_numel;
+    void* extra_info_ptr = entries_ptr + packet_numel;
     ppp->PreprocessSingle(pkt_id, entries_ptr, extra_info_ptr);
 }
 
@@ -156,7 +156,7 @@ void ReusePacket(rte_mbuf* mbuf, uint32_t pkt_id, uint64_t packet_numel,
 
     // Preprocess the packet (Copying/quantizing is done here)
     DpdkBackend::DpdkPacketElement* entries_ptr = reinterpret_cast<DpdkBackend::DpdkPacketElement*>(switchml_pkt_hdr+1);
-    void* extra_info_ptr = entries_ptr + sizeof(DpdkBackend::DpdkPacketElement) * packet_numel;
+    void* extra_info_ptr = entries_ptr + packet_numel;
     ppp->PreprocessSingle(pkt_id, entries_ptr, extra_info_ptr);
 }
 
@@ -184,11 +184,11 @@ void TxBufferCallback(struct rte_mbuf **pkts, uint16_t unsent, void *wt_ptr) {
 
 
 #ifdef TIMEOUTS
+
+// SUGGESTION: try to avoid this struct as its not very clean
 /**
  * @brief Just a simple struct to pass needed information to 
  * The ResendPacketCallback function
- * 
- * SUGGESTION: try to avoid this as its not very clean
  */
 struct ResendPacketCallbackArgs {
     JobId job_id;
@@ -202,12 +202,12 @@ struct ResendPacketCallbackArgs {
 /**
  * @brief A callback to rebuild and resend a packet when a timeout occurs.
  * 
- * SUGGESTION: Reuse mbufs instead of allocating new ones.
- * 
  * @param timer the timer that expired
  * @param arg A pointer to ResendPacketCallbackArgs
  */
 void ResendPacketCallback(struct rte_timer *timer, void *arg) {
+    // SUGGESTION: Reuse mbufs instead of allocating new ones.
+
     struct ResendPacketCallbackArgs* args = static_cast<struct ResendPacketCallbackArgs*>(arg);
     static thread_local uint64_t timeouts_counter = 0;
     static thread_local uint64_t timeout_threshold = args->dwt->config_.backend_.dpdk.timeout_threshold;

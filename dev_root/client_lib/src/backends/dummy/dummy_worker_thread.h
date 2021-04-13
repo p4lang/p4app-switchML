@@ -10,6 +10,7 @@
 #include "common.h"
 #include "config.h"
 #include "dummy_backend.h"
+#include "prepostprocessor.h"
 
 namespace switchml {
 
@@ -32,7 +33,7 @@ class DummyWorkerThread{
 
     ~DummyWorkerThread();
 
-    DummyWorkerThread(DummyWorkerThread const&) = delete;
+    DummyWorkerThread(DummyWorkerThread const&) = default;
     void operator=(DummyWorkerThread const&) = delete;
 
     DummyWorkerThread(DummyWorkerThread&&) = default;
@@ -43,17 +44,34 @@ class DummyWorkerThread{
      */
     void operator()();
 
+    /**
+     * @brief Start the thread
+     */
+    void Start();
+
+    /**
+     * @brief Wait for the thread to exit and delete its system reference
+     */
+    void Join();
+
     /** Worker thread id */
     const WorkerTid tid_;
   private:
     /** Monotonically increasing counter to give unique IDs for each new worker thread **/
     static WorkerTid next_tid_;
+
     /** A reference to the context */
     Context& context_;
     /** A reference to the context backend */
     DummyBackend& backend_;
     /** A reference to the context configuration */
     Config& config_;
+
+    /** A pointer to the actual system thread object */
+    std::thread* thread_;
+
+    /** The prepostprocessor used by the worker thread */
+    std::shared_ptr<PrePostProcessor> ppp_;
 };
 
 } // namespace switchml

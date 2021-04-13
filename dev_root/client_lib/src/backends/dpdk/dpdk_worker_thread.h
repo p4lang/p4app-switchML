@@ -80,7 +80,7 @@ class DpdkWorkerThread{
     /** Worker thread core id */
     uint16_t lcore_id_;
 
-    /** The prepost processor used by the worker thread */
+    /** The prepostprocessor used by the worker thread */
     std::shared_ptr<PrePostProcessor> ppp_;
 
 #ifdef TIMEOUTS

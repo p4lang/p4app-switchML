@@ -180,14 +180,14 @@ int main(int argc, char* argv[]) {
             }
         } else {
             int sign = 1;
-            for (uint64_t i = 0; i < tconf.tensor_numel; i++)
+            for (int32_t i = 0; i < (int32_t) tconf.tensor_numel; i++)
             {
                 int32_cpu_src_data[i] = i * sign;
                 sign *= -1;
             }
         }
         // Let's populate the destination with a fixed pattern that we can recognize and know
-        // it has been changed or not.
+        // if it has been changed or not.
         for(uint64_t i = 0; i < tconf.tensor_numel; i++) {
             int32_cpu_dst_data[i] = 123456789;
         }
@@ -277,7 +277,6 @@ int main(int argc, char* argv[]) {
             dst_data = cpu_dst_data;
         }
 #endif
-        int total_iterations = tconf.num_jobs + tconf.num_warmup;
         int max_num_errors = 10;
         if(tconf.tensor_type == "float") {
             float* float_src_data = static_cast<float*>(src_data);

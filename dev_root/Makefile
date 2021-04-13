@@ -18,7 +18,11 @@
 BUILDDIR ?= $(shell pwd)/build # Expand absolute path for sub makefiles
 
 .PHONY: default
-default: third_party client_lib examples benchmarks;
+default: third_party client_lib examples benchmarks
+
+# This target was created to conveniently rebuild the project after a source code change
+.PHONY: rebuild
+rebuild: clean client_lib examples benchmarks
 
 .PHONY: third_party
 third_party:

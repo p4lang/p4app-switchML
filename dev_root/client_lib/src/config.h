@@ -148,7 +148,10 @@ struct DpdkBackendConfig {
     */
     uint32_t pool_size;
 
-    /** Each memory pool as described in pool_size has a dedicated software cache. How big do we want this to be?  */
+    /** 
+     * Each memory pool as described in pool_size has a dedicated software cache. How big do we want this to be?  
+     * This value has strict restrictions from DPDK. If you don't know what you're doing you can leave it as it is.
+     */
     uint32_t pool_cache_size;
     
     /** What's the maximum number of packets that we retrieve from the NIC at a time. */
@@ -255,7 +258,6 @@ class Config {
      * @brief Make sure configuration values are valid.
      * 
      * If a misconfiguration is fatal then it shuts the program down.
-     * SUGGESTION: return false instead of fatally exiting?
      */
     void Validate();
 

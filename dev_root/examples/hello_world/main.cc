@@ -25,7 +25,7 @@ int main(){
     printf("Initializing data\n");
     for(int i = 0; i < num_tensors; i++) {
         for(uint64_t j = 0; j < numel; j++) {
-            in_data[i][j] = (i*numel+j) / 1.24; // Use any random numbers
+            in_data[i][j] = i*numel+j;
         }
     }
 
@@ -43,10 +43,11 @@ int main(){
     printf("Verifying results\n");
     for(int i = 0; i < num_tensors; i++) {
         for(uint64_t j = 0; j < numel; j++) {
-            float input = (i*numel+j) / 1.24; // Use the same formula you used when you initialized
+            float input = i*numel+j; // Use the same formula you used when you initialized
             float expected = input * num_workers;
-            if( out_data[i][j] != expected) {
-                printf("Failed to verify output data. Element %ld in tensor %d was %e but we expected %e\n", j, i, out_data[i][j], expected);
+            float error = (expected-out_data[i][j]) / (expected + std::numeric_limits<float>::epsilon()) * 100; // We add epsilon to avoid running into division by 0
+            if( error > 1) {
+                printf("Failed to verify output data. Element %ld in tensor %d was %e but we expected %e (error %.2f%%)\n", j, i, out_data[i][j], expected, error);
                 exit(1);
             }
             if(in_data[i][j] != input){

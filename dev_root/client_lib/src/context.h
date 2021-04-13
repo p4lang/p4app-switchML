@@ -178,7 +178,6 @@ class Context {
     void NotifyJobSliceCompletion(WorkerTid worker_thread_id, const JobSlice& job_slice);
 
     // We want GetJobSlice, NotifyJobSliceCompletion, and get Backend to only be accessible to the worker thread and not the client.
-    // SUGGESTION: Is there a more clean way to do this to prevent the worker thread from accessing other private members?
     friend class DummyWorkerThread;
   #ifdef DPDK
     friend class DpdkWorkerThread;

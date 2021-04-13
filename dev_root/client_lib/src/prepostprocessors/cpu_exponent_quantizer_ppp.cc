@@ -78,10 +78,13 @@ void CpuExponentQuantizerPPP::PreprocessSingle(uint64_t pkt_id, void* entries_pt
             }
 #endif
             // Quantize the remainder elements.
-            while (i < packet_numel) {
+            for (; i < packet_numel; i++) {
                 out_ptr[i] = htonl(std::round(in_ptr[i] * scaling_factors_[pkt_id]));
-                DVLOG(4) << "Worker thread '" << this->worker_tid_ << "' i=" << i << " out_ptr[i]=" << out_ptr[i] << " in_ptr[i]=" << in_ptr[i] << " scaling_factors[pkt_id]=" << scaling_factors_[pkt_id];
-                i++;
+                DVLOG(4) << "Worker thread '" << this->worker_tid_ 
+                    << "' slice_index=" << job_slice_numel_offset + i
+                    << "' out_ptr[" << i << "]=" << out_ptr[i] 
+                    << " in_ptr[" << i << "]=" << in_ptr[i] 
+                    << " scaling_factors[" << pkt_id << "]=" << scaling_factors_[pkt_id];
             }
 
             // Add the subtracted batch back to pkt_id so that exponent calculation happens for the next packet
@@ -106,7 +109,6 @@ void CpuExponentQuantizerPPP::PreprocessSingle(uint64_t pkt_id, void* entries_pt
 #ifdef VCL
             Vec16f vectorial_current_max = 0;
             Vec16f vectorial_float_data;
-            // QUESTION: Amedeo was dividing packet_numel by 2 
             uint64_t to_process = packet_numel - packet_numel % 16;
             for(; i < to_process; i += 16) {
                 vectorial_float_data.load(in_ptr + i);
@@ -115,12 +117,11 @@ void CpuExponentQuantizerPPP::PreprocessSingle(uint64_t pkt_id, void* entries_pt
             // This call has a large overhead
             current_max = horizontal_max<Vec16f>(vectorial_current_max);
 #endif
-            while(i < packet_numel) {
+            for (; i < packet_numel; i++) {
                 float v = abs(in_ptr[i]);
                 if (v > current_max) {
                     current_max = v;
                 }
-                i++;
             }
             // Now we have the absolute maximum. 
 
@@ -157,10 +158,12 @@ void CpuExponentQuantizerPPP::PreprocessSingle(uint64_t pkt_id, void* entries_pt
         }
 #endif
         // Convert the remainder elements.
-        while (i < packet_numel) {
+        for (; i < packet_numel; i++) {
             out_ptr[i] = htonl(in_ptr[i]);
-            DVLOG(4) << "Worker thread '" << this->worker_tid_ << "' i=" << i << " out_ptr[i]=" << out_ptr[i] << " in_ptr[i]=" << in_ptr[i];
-            ++i;
+            DVLOG(4) << "Worker thread '" << this->worker_tid_ 
+                << "' slice_index=" << job_slice_numel_offset + i
+                << "' out_ptr[" << i << "]=" << out_ptr[i] 
+                << " in_ptr[" << i << "]=" << in_ptr[i];
         }
     } else {
         LOG(FATAL) << "Worker thread '" << this->worker_tid_ << "' '" << this->job_slice_->slice.data_type << "' is not a supported data type.";
@@ -206,10 +209,13 @@ void CpuExponentQuantizerPPP::PostprocessSingle(uint64_t pkt_id, void* entries_p
             }
 #endif
             // Dequantize the remainder elements.
-            while (i < packet_numel) {
+            for (; i < packet_numel; i++) {
                 out_ptr[i] = float((int32_t)ntohl(in_ptr[i])) / this->scaling_factors_[pkt_id];
-                DVLOG(4) << "Worker thread '" << this->worker_tid_ << "' i=" << i << " out_ptr[i]=" << out_ptr[i] << " in_ptr[i]=" << in_ptr[i] << " scaling_factors[pkt_id]=" << scaling_factors_[pkt_id];
-                i++;
+                DVLOG(4) << "Worker thread '" << this->worker_tid_ 
+                    << "' slice_index=" << job_slice_numel_offset + i
+                    << "' out_ptr[" << i << "]=" << out_ptr[i] 
+                    << " in_ptr[" << i << "]=" << in_ptr[i] 
+                    << " scaling_factors[" << pkt_id << "]=" << scaling_factors_[pkt_id];
             }
 
             // Add the subtracted batch back to pkt_id so that the received global exponent is stored for the next packet
@@ -248,10 +254,12 @@ void CpuExponentQuantizerPPP::PostprocessSingle(uint64_t pkt_id, void* entries_p
         }
 #endif
         // Convert the remainder elements.
-        while (i < packet_numel) {
+        for (;i < packet_numel; i++) {
             out_ptr[i] = ntohl(in_ptr[i]);
-            DVLOG(4) << "Worker thread '" << this->worker_tid_ << "' i=" << i << " out_ptr[i]=" << out_ptr[i] << " in_ptr[i]=" << in_ptr[i];
-            ++i;
+            DVLOG(4) << "Worker thread '" << this->worker_tid_ 
+                << "' slice_index=" << job_slice_numel_offset + i
+                << "' out_ptr[" << i << "]=" << out_ptr[i] 
+                << " in_ptr[" << i << "]=" << in_ptr[i];
         }
     } else {
         LOG(FATAL) << "Worker thread '" << this->worker_tid_ << "' '" << this->job_slice_->slice.data_type << "' is not a supported data type.";

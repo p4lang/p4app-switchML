@@ -64,6 +64,8 @@ On Debian/Ubuntu you can run the following command to install them:
 	ibverbs= \
 	mnl
 
+In addition to the above, you must compile the dpdk library by following the instructions in the README inside the third_party directory.
+
 ### 1.3 RDMA Backend Dependencies
 
 Coming soon!

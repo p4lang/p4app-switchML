@@ -24,9 +24,11 @@ DummyWorkerThread::DummyWorkerThread(Context& context, DummyBackend& backend, Co
 tid_(DummyWorkerThread::next_tid_++),
 context_(context),
 backend_(backend),
-config_(config)
+config_(config),
+thread_(nullptr),
+ppp_()
 {
-    // Do nothing
+    this->ppp_ = PrePostProcessor::CreateInstance(config, this->tid_);
 }
 
 DummyWorkerThread::~DummyWorkerThread(){
@@ -40,8 +42,12 @@ void DummyWorkerThread::operator()() {
     DummyBackend& backend = this->backend_;
     const GeneralConfig& genconf = this->config_.general_;
     // The maximum number of outstanding packets for this worker.
-    const uint64_t outstanding_pkts = genconf.max_outstanding_packets/genconf.num_worker_threads;
+    const uint64_t max_outstanding_pkts = genconf.max_outstanding_packets/genconf.num_worker_threads;
     backend.SetupWorkerThread(this->tid_);
+
+    // Buffers to hold the data that's supposed to be outstanding.
+    void* outstanding_entries = malloc(max_outstanding_pkts*genconf.packet_numel*4); // Size of entry assumed to be 4 bytes at most
+    void* outstanding_extra_info = malloc(max_outstanding_pkts*2); // 2 bytes extra info for each packet
 
     // The job slice struct that will be filled with the next job slice to work on.
     JobSlice job_slice;
@@ -62,41 +68,46 @@ void DummyWorkerThread::operator()() {
             continue;
         }
 
-        // TODO: Preprocess job slice
-
         // Compute number of packets needed
-        uint64_t total_num_packets = (job_slice.slice.numel + genconf.packet_numel - 1) / genconf.packet_numel; // Roundup division
-        DVLOG(3) << "Worker thread '" << this->tid_ << "' will send a total of '" << total_num_packets << "' packets each having a maximum of '" << genconf.packet_numel << " elements.";
+        uint64_t total_num_pkts = (job_slice.slice.numel + genconf.packet_numel - 1) / genconf.packet_numel; // Roundup division
 
-        // Create first burst of packets
-        uint64_t first_burst_num_packets = std::min(outstanding_pkts, total_num_packets);
-        std::vector<DummyBackend::DummyPacket> first_burst_packets;
-        first_burst_packets.reserve(first_burst_num_packets);
+        // We can logically divide all of the packets that we will send into 'max_outstanding_pkts' sized groups
+        // (Or less in case the total number of packets was less than max_outsanding_pkts).
+        // We call each of these groups a batch. So if max_outstanding_pkts=10 and we wanted to send 70 packets then we have 7 batches.
+        uint64_t batch_num_pkts = std::min(max_outstanding_pkts, total_num_pkts);
 
-        for(uint64_t i = 0, elements_finished = 0; i < first_burst_num_packets; i++, elements_finished += genconf.packet_numel) {
-            struct DummyBackend::DummyPacket pkt;
-            pkt.job_id = job_slice.job->id_;
-            pkt.tensor.data_type = job_slice.slice.data_type;
-            pkt.tensor.numel = std::min(genconf.packet_numel, job_slice.slice.numel - elements_finished);
-            pkt.tensor.in_ptr = job_slice.slice.in_ptr;
-            pkt.tensor.out_ptr = job_slice.slice.out_ptr;
-            pkt.tensor.OffsetPtrs(elements_finished);
-            pkt.packet_index = i;
-            first_burst_packets.push_back(pkt);
-            DLOG_IF(FATAL, pkt.packet_index != ((uintptr_t) pkt.tensor.in_ptr - (uintptr_t) job_slice.slice.in_ptr) / (genconf.packet_numel * DataTypeSize(job_slice.slice.data_type)))
-                << "Something is wrong at first burst packet creation";
+        this->ppp_->SetupJobSlice(&job_slice, total_num_pkts, batch_num_pkts);
+
+        if(this->ppp_->NeedsExtraBatch()) {
+            total_num_pkts += batch_num_pkts;
         }
-        // TODO: Preprocess first burst of packets
+
+        DVLOG(3) << "Worker thread '" << this->tid_ << "' will send a total of '" << total_num_pkts << "' packets each having '" << genconf.packet_numel << " elements.";
+
+        // Create first batch of packets
+        std::vector<DummyBackend::DummyPacket> first_batch_pkts;
+        first_batch_pkts.reserve(batch_num_pkts);
+        for(uint64_t i = 0, elements_finished = 0; i < batch_num_pkts; i++, elements_finished += genconf.packet_numel) {
+            struct DummyBackend::DummyPacket pkt;
+            pkt.pkt_id = i;
+            pkt.job_id = job_slice.job->id_;
+            pkt.numel = genconf.packet_numel;
+            pkt.data_type = job_slice.slice.data_type;
+            pkt.entries_ptr = (void*) (((uintptr_t) outstanding_entries) + (pkt.pkt_id % batch_num_pkts) * DataTypeSize(pkt.data_type) * genconf.packet_numel);
+            pkt.extra_info_ptr = (void*) (((uintptr_t) outstanding_extra_info) + (pkt.pkt_id % batch_num_pkts) * 2);
+            this->ppp_->PreprocessSingle(pkt.pkt_id, pkt.entries_ptr , pkt.extra_info_ptr);
+            first_batch_pkts.push_back(pkt);
+        }
 
         // Send first burst
-        DVLOG(3) << "Worker thread '" << this->tid_ << "' will send the first '" << first_burst_packets.size() << "' packets";
-        backend.SendBurst(this->tid_, first_burst_packets);
-        ctx.GetStats().AddTotalPktsSent(this->tid_, first_burst_packets.size());
+        DVLOG(3) << "Worker thread '" << this->tid_ << "' will send the first '" << first_batch_pkts.size() << "' packets";
+        backend.SendBurst(this->tid_, first_batch_pkts);
+        ctx.GetStats().AddTotalPktsSent(this->tid_, first_batch_pkts.size());
 
         // loop until all packets have been sent and received.
         DVLOG(3) << "Worker thread '" << this->tid_ << "' is starting the receive and send loop";
         uint64_t num_packets_received = 0; 
-        while(num_packets_received != total_num_packets && ctx.GetContextState() == Context::ContextState::RUNNING) {
+        while(num_packets_received != total_num_pkts && ctx.GetContextState() == Context::ContextState::RUNNING) {
             // Receive group of packets
             std::vector<DummyBackend::DummyPacket> received_packets;
             backend.ReceiveBurst(this->tid_, received_packets);
@@ -108,43 +119,48 @@ void DummyWorkerThread::operator()() {
             ctx.GetStats().AddCorrectPktsReceived(this->tid_, received_packets.size());
             num_packets_received += received_packets.size();
             DVLOG(3) << "Worker thread '" << this->tid_ << "' received '" << received_packets.size()
-                << "' packets. Total received '" << num_packets_received << "/" << total_num_packets << "'.";
-            
+                << "' packets. Total received '" << num_packets_received << "/" << total_num_pkts << "'.";
+
             // Create next group of packets to send including retransmissions.
             std::vector<DummyBackend::DummyPacket> packets_to_send;
-
-            // TODO: Check timers and add packets requiring retransmission
 
             // Add new packets corresponding to received packets
             for(uint64_t i = 0; i < received_packets.size(); i++) {
                 struct DummyBackend::DummyPacket pkt = received_packets.at(i);
-                DVLOG(3) << "Worker thread '" << this->tid_ << "' retrieved packet '" << pkt.packet_index << "' with numel '" << pkt.tensor.numel << "'.";
-                // If we had outstanding_pkts = 5 and we received packet with index 3 then the next packet index that will reuse the same slot is 3+5=8.
-                pkt.tensor.OffsetPtrs(outstanding_pkts * genconf.packet_numel);
-                if( (uintptr_t) pkt.tensor.in_ptr >= (uintptr_t) job_slice.slice.in_ptr + job_slice.slice.numel * DataTypeSize(job_slice.slice.data_type)) {
+                DVLOG(3) << "Worker thread '" << this->tid_ << "' retrieved packet '" << pkt.pkt_id << "'.";
+
+                this->ppp_->PostprocessSingle(pkt.pkt_id, pkt.entries_ptr, pkt.extra_info_ptr);
+
+                // What's the next pkt id if we were to reuse this packet?
+                pkt.pkt_id += batch_num_pkts;
+
+                // Do we need to reuse the packet?
+                if(pkt.pkt_id >= total_num_pkts) {
                     continue;
                 }
-                pkt.packet_index = ( (uintptr_t) pkt.tensor.in_ptr - (uintptr_t) job_slice.slice.in_ptr) / genconf.packet_numel;
-                // The number of elements is either the maximum number of elements per packet,
-                // or if this is the last packet, then its the remaining number of elements..
-                pkt.tensor.numel = std::min(genconf.packet_numel, job_slice.slice.numel - genconf.packet_numel * pkt.packet_index);
+                DVLOG(3) << "Worker thread '" << this->tid_ << "' creating packet '" << pkt.pkt_id << "'.";
 
-                DVLOG(3) << "Worker thread '" << this->tid_ << "' creating packet '" << pkt.packet_index << "' with numel '" << pkt.tensor.numel << "'.";
+                // Compute pointers to the entries and extra info outstanding buffers
+                pkt.entries_ptr = (void*) (((uintptr_t) outstanding_entries) + (pkt.pkt_id % batch_num_pkts) * DataTypeSize(pkt.data_type) * genconf.packet_numel);
+                pkt.extra_info_ptr = (void*) (((uintptr_t) outstanding_extra_info) + (pkt.pkt_id % batch_num_pkts) * 2);
+
+                this->ppp_->PreprocessSingle(pkt.pkt_id, pkt.entries_ptr , pkt.extra_info_ptr);
+
                 packets_to_send.push_back(pkt);
             }
+
             if(packets_to_send.size() == 0) {
                 continue;
             }
-            // TODO: Postprocess and preprocess group of packets.
 
             // Send the next group of packets
-            DVLOG(3) << "Worker thread '" << this->tid_ << "' sending next burst containing '" << packets_to_send.size() << "' packets.";
+            DVLOG(3) << "Worker thread '" << this->tid_ << "' sending '" << packets_to_send.size() << "' packets.";
             backend.SendBurst(this->tid_, packets_to_send);
             ctx.GetStats().AddTotalPktsSent(this->tid_, packets_to_send.size());
 
-        } // while (num_packets_received != total_num_packets && ctx.GetContextState() == Context::ContextState::RUNNING)
+        } // while (num_packets_received != total_num_pkts && ctx.GetContextState() == Context::ContextState::RUNNING)
 
-        // TODO: PostprocessJobSlice
+        this->ppp_->CleanupJobSlice();
         
         // Notify the ctx that the worker thread finished this job slice.
         if(ctx.GetContextState() == Context::ContextState::RUNNING) {
@@ -155,7 +171,21 @@ void DummyWorkerThread::operator()() {
     } // while(ctx.GetContextState() == Context::ContextState::RUNNING)
 
     VLOG(0) << "Worker thread '" << this->tid_ << "' exiting.";
+    free(outstanding_entries);
+    free(outstanding_extra_info);
     backend.CleanupWorkerThread(this->tid_);
+}
+
+void DummyWorkerThread::Start() {
+    LOG_IF(FATAL, this->thread_ != nullptr) << "Trying to start a thread twice.";
+    // SUGGESTION: This works but is it the best way to to store a reference in the same class?
+    this->thread_ = new std::thread(*this); // This will create a new thread that calls the operator()() function.
+}
+
+void DummyWorkerThread::Join() {
+    LOG_IF(FATAL, this->thread_ == nullptr) << "Trying to join a thread that hasn't started or has already been joined.";
+    this->thread_->join();
+    delete this->thread_;
 }
 
 } // namespace switchml

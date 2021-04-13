@@ -36,9 +36,9 @@ DpdkWorkerThread::DpdkWorkerThread(Context& context, DpdkBackend& backend, Confi
     ,timer_cycles_(0)
 #endif
 {
-    ppp_ = PrePostProcessor::CreateInstance(config, this->tid_);
+    this->ppp_ = PrePostProcessor::CreateInstance(config, this->tid_);
     // Each worker thread has its own udp port
-    worker_thread_e2e_addr_be_.port = rte_cpu_to_be_16(config_.backend_.dpdk.worker_port + this->tid_);
+    this->worker_thread_e2e_addr_be_.port = rte_cpu_to_be_16(config_.backend_.dpdk.worker_port + this->tid_);
 }
 
 DpdkWorkerThread::~DpdkWorkerThread(){
@@ -307,7 +307,7 @@ void DpdkWorkerThread::operator()() {
                     << " pkt_id=" << pkt_id;
 
                 DpdkBackend::DpdkPacketElement* entries_ptr = reinterpret_cast<DpdkBackend::DpdkPacketElement*>(switchml_hdr+1);
-                void* extra_info_ptr = entries_ptr + sizeof(DpdkBackend::DpdkPacketElement) * genconf.packet_numel;
+                void* extra_info_ptr = entries_ptr + genconf.packet_numel;
                 this->ppp_->PostprocessSingle(pkt_id, entries_ptr, extra_info_ptr);
 
                 num_received_pkts++;
