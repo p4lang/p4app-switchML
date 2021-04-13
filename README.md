@@ -2,12 +2,12 @@
 
 SwitchML accelerates the all-reduce communication primitive commonly used by distributed Machine Learning frameworks. It uses a programmable switch dataplane to perform in-network computation, reducing the volume of exchanged data by aggregating vectors (e.g., model updates) from  multiple  workers  in  the  network.  It provides an end-host library that can be integrated with ML frameworks to provide an efficient solution that speeds up training for a number of real-world benchmark models.
 
-The switch hardware is programmed with a [P4 program](dev_root/switch_p4) for the [Tofino Native Architecture (TNA)](https://github.com/barefootnetworks/Open-Tofino) and managed at runtime through a [Python controller](dev_root/switch_controller) using BFRuntime. The [end-host library](dev_root/client_lib) provides simple APIs to perform all-reduce operations using different transport protocols. We currently support UDP through DPDK and RDMA UC. The library has already been integrated with ML frameworks as a [NCCL plugin](dev_root/frameworks_integration/nccl_plugin).
+The switch hardware is programmed with a [P4 program](dev_root/p4) for the [Tofino Native Architecture (TNA)](https://github.com/barefootnetworks/Open-Tofino) and managed at runtime through a [Python controller](dev_root/controller) using BFRuntime. The [end-host library](dev_root/client_lib) provides simple APIs to perform all-reduce operations using different transport protocols. We currently support UDP through DPDK and RDMA UC. The library has already been integrated with ML frameworks as a [NCCL plugin](dev_root/frameworks_integration/nccl_plugin).
 
 ## Getting started
 To run SwitchML you need to:
-- compile the P4 program and deploy it on the switch (see README file in the [P4 code folder](dev_root/switch_p4)
-- run the Python controller (see README file in the [controller folder](dev_root/switch_controller)
+- compile the P4 program and deploy it on the switch (see README file in the [P4 code folder](dev_root/p4)
+- run the Python controller (see README file in the [controller folder](dev_root/controller)
 - compile and run the end-host program using the end-host library (see README file in the [library folder](dev_root/client_lib)
 
 The [examples](dev_root/examples) folder provides simple programs that show how to use the APIs.
@@ -18,8 +18,8 @@ This repository is organized as follows:
 ```
 docs: project documentation
 dev_root:
-  ┣ switch_p4: P4 code for TNA
-  ┣ switch_controller: controller program
+  ┣ p4: P4 code for TNA
+  ┣ controller: controller program
   ┣ client_lib: end-host library
   ┣ examples: set of example programs
   ┣ benchmarks: programs used to test raw performance

@@ -121,4 +121,4 @@ After building the library and getting a copy of the include files, you can now 
 
 **Notes:**
  - You can choose to create a Config object programmatically, edit its members, and pass it to the context as a parameter of the `Start()` method, instead of using the `switchml.cfg` file.
- - For information on how to setup the switch, look at [switch_p4](dev_root/switch_p4) and [switch_controller](dev_root/switch_controller).
+ - For information on how to setup the switch, look at the [P4](dev_root/p4) and [controller](dev_root/controller) READMEs.
