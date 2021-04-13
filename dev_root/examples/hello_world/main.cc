@@ -15,7 +15,7 @@ int main(){
     printf("Hello world!. Starting the switchml context\n");
     ctx.Start();
 
-    uint64_t numel = (1 << 15) + 31412; // The tensors are stored on the stack so there might be some limits on the size.
+    uint64_t numel = (1 << 15);
     int num_tensors = 8;
     int num_workers = ctx.GetConfig().general_.num_workers;
     printf("Allocating data\n");
