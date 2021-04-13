@@ -16,7 +16,7 @@ It helps ensure that the software stack is operating correctly down to the backe
 
 ### 1.2 DPDK Backend
 
-The DPDK backend uses the DPDK library to perform collectives operations with the UDP transport. Thus it supports all of the NICs and drivers that DPDK supports (we tested only Intel and Mellanox NICs so far).
+The DPDK backend uses the DPDK library to perform collective operations with the UDP transport. Thus it supports all of the NICs and drivers that DPDK supports (we tested only Intel and Mellanox NICs so far).
 
 ### 1.3 RDMA Backend
 
