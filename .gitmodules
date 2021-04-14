@@ -1,0 +1,6 @@
+[submodule "dev_root/third_party/vcl"]
+	path = dev_root/third_party/vcl
+	url = https://github.com/vectorclass/version2
+[submodule "dev_root/third_party/dpdk"]
+	path = dev_root/third_party/dpdk
+	url = https://github.com/DPDK/dpdk.git
