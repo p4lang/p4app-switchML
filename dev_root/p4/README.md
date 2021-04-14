@@ -21,13 +21,13 @@ The control plane requires python 3.8, so P4 Studio must be compiled using pytho
 1. Build the P4 code. Detailed instructions are available in the Intel documentation (_Compiler User Guide_ document). If you use the `p4_build.sh` script, you can compile the P4 program with the following command:
 
     ```bash
-    P4_NAME=SwitchML p4_build.sh  switchml.p4
+    P4_NAME=SwitchML p4_build.sh switchml.p4
     ```
 
 2. Run the reference drivers application:
 
     ```bash
-    $SDE/run_switchd.sh  -p SwitchML
+    $SDE/run_switchd.sh -p SwitchML
     ```
 
 3. When switchd is started, run the control plane program (either on a switch or on a separate server).

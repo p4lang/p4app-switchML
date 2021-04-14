@@ -23,14 +23,14 @@ $SDE_INSTALL/lib/python*/site-packages/tofino/bfrt_grpc/
 
 ## Running the controller
 
-To enable switch ports and configure the switch to forward regular traffic, the controller reads the `fib.yml` that describes the machines connected to the switch ports: port number, MAC and IP addresses of the machine connected to that port and port speed.
+To enable switch ports and configure the switch to forward regular traffic, the controller reads the `fib.yml` that describes the machines connected to the switch ports: port number (data plane number), MAC and IP addresses of the machine connected to that port and port speed.
 This is an example:
 
 ```yaml
 switch:
     forward:
         0   : {mac: "01:23:45:67:89:ab", ip: "10.0.0.101", speed: "100G"}
-        0   : {mac: "01:23:45:ba:98:76", ip: "10.0.0.102", speed: "100G"}
+        4   : {mac: "01:23:45:ba:98:76", ip: "10.0.0.102", speed: "100G"}
 ```
 
 The controller is started with:
