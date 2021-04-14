@@ -209,8 +209,10 @@ void CpuExponentQuantizerPPP::PostprocessSingle(uint64_t pkt_id, void* entries_p
             }
 #endif
             // Dequantize the remainder elements.
-            for (; i < packet_numel; i++) {
-                out_ptr[i] = float((int32_t)ntohl(in_ptr[i])) / this->scaling_factors_[pkt_id];
+            uint64_t j = i; // TODO: Invistigate why using a new variable j instead of i fixes the occasional segfault that happens with dpdk (255 float elements with 4 cores).
+            for (; j < packet_numel; j++) {
+                int32_t in_be = (int32_t) ntohl(in_ptr[i]);
+                out_ptr[i] = in_be / this->scaling_factors_[pkt_id];
                 DVLOG(4) << "Worker thread '" << this->worker_tid_ 
                     << "' slice_index=" << job_slice_numel_offset + i
                     << "' out_ptr[" << i << "]=" << out_ptr[i] 
