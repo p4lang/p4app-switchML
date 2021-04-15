@@ -155,7 +155,7 @@ control NextStepSelector(
             recirculate_for_HARVEST5;
             recirculate_for_HARVEST6;
             recirculate_for_HARVEST7;
-            finish_consume;            
+            finish_consume;
             broadcast;
             retransmit;
             drop;

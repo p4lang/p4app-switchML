@@ -27,10 +27,10 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_tm_t ig_tm_md) {
 
     // Instantiate controls
-    
+
     ARPandICMPResponder() arp_icmp_responder;
     Forwarder() forwarder;
-    
+
     IngressDropSimulator() ingress_drop_sim;
     EgressDropSimulator() egress_drop_sim;
 

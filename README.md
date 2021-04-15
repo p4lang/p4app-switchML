@@ -4,6 +4,9 @@ SwitchML accelerates the all-reduce communication primitive commonly used by dis
 
 The switch hardware is programmed with a [P4 program](dev_root/p4) for the [Tofino Native Architecture (TNA)](https://github.com/barefootnetworks/Open-Tofino) and managed at runtime through a [Python controller](dev_root/controller) using BFRuntime. The [end-host library](dev_root/client_lib) provides simple APIs to perform all-reduce operations using different transport protocols. We currently support UDP through DPDK and RDMA UC. The library has already been integrated with ML frameworks as a [NCCL plugin](dev_root/frameworks_integration/nccl_plugin).
 
+**Note**
+This is a preliminary code release and we are working to complete both code and documentation.
+
 ## Getting started
 To run SwitchML you need to:
 - compile the P4 program and deploy it on the switch (see README file in the [P4 code folder](dev_root/p4)
@@ -35,9 +38,9 @@ In our experiments (see benchmark folder for details) we observed a more than 2x
 
 ## Publication
 
-> Scaling Distributed Machine Learning with In-Network Aggregation
+> [Scaling Distributed Machine Learning with In-Network Aggregation
 > A. Sapio, M. Canini, C.-Y. Ho, J. Nelson, P. Kalnis, C. Kim, A. Krishnamurthy, M. Moshref, D. R. K. Ports, P. Richtarik.
-> In Proceedings of NSDI’21, Apr 2021.
+> In Proceedings of NSDI’21, Apr 2021.](https://www.usenix.org/conference/nsdi21/presentation/sapio)
 
 ## Contributing
 This project welcomes contributions and suggestions.

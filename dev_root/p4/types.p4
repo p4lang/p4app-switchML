@@ -137,7 +137,7 @@ enum bit<4> packet_type_t {
     HARVEST4   = 0xc,
     HARVEST5   = 0xd,
     HARVEST6   = 0xe,
-    HARVEST7   = 0xf 
+    HARVEST7   = 0xf
 }
 
 // Port metadata, used for drop simulation
@@ -154,7 +154,7 @@ header switchml_md_h {
     MulticastGroupId_t mgid; // 16 bits
 
     queue_pair_index_t recirc_port_selector;
-    
+
     packet_size_t packet_size;
 
     worker_type_t worker_type;

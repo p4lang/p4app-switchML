@@ -2,7 +2,7 @@
 #define _RDMA_RECEIVER_
 
 // Switch QPN format:
-// - bits [15:0] are the queue pair index for this worker. 
+// - bits [15:0] are the queue pair index for this worker.
 // - higher bits are the worker ID. Since we only support 32
 //   workers right now, only bits 20 down to 16 should ever be used.
 // Since each RDMA message in flight requires its own queue pair, and the
