@@ -1,5 +1,5 @@
 
-# SwitchML Client Library
+# Client Library
 
 The SwitchML client is a static library that bridges the gap between the end-hosts and the programmable switch through a simple to use API.
 
@@ -72,7 +72,7 @@ Coming soon!
 
 ## 2. Compiling the Library
 
-To build the library with only the dummy backend for testing purposes you can simply run
+To build the library with only the dummy backend for testing purposes you can simply run (Assuming you are in the client_lib directory)
 
 	make
 
@@ -99,9 +99,9 @@ And finally the configuration file will be found in
 ## 3. Using the library
 
 ***Important !***
-*Before trying to use the library's API directly in your project, take a look at our [Framework Integration](#) directory to see if you can simply use one of the provided methods to integrate SwitchML into your DNN software stack.*
+*Before trying to use the library's API directly in your project, take a look at our [Framework Integration](/dev_root/frameworks_integration) directory to see if you can simply use one of the provided methods to integrate SwitchML into your DNN software stack.*
 
-*What follows is intended to give you a high level overview of what needs to be done. For a more detailed step by step guide look at the [examples](#)*
+*What follows is intended to give you a high level overview of what needs to be done. For a more detailed step by step guide look at the [examples](/dev_root/examples)*
 
 After building the library and getting a copy of the include files, you can now use SwitchML in your project to perform collective communication. Follow these simple steps:
 
@@ -123,4 +123,4 @@ After building the library and getting a copy of the include files, you can now 
 
 **Notes:**
  - You can choose to create a Config object programmatically, edit its members, and pass it to the context as a parameter of the `Start()` method, instead of using the `switchml.cfg` file.
- - For information on how to setup the switch, look at the [P4](dev_root/p4) and [controller](dev_root/controller) READMEs.
+ - For information on how to setup the switch, look at the [P4](/dev_root/p4) and [controller](/dev_root/controller) documentation.

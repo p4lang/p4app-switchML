@@ -1,8 +1,8 @@
 # Third Party
 
-This directory contains third party libraries that are needed by SwitchML.
+The third_party directory contains third party libraries that are needed by SwitchML.
 
-To build a library, simply run:
+To build a library, simply run (Assuming you are in the third_party):
 
     make <library name> [compilation flags]
 

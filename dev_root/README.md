@@ -13,7 +13,7 @@ third_party: third party software
 ```
 
 ## 1. Switch
-We provide the [P4 program](dev_root/p4) for the [Tofino Native Architecture (TNA)](https://github.com/barefootnetworks/Open-Tofino) and the [runtime python controller](dev_root/controller). We assume that you have available and have already compiled the Intel P4 Studio suite in both the switch and the server that will run the controller. You can also run the controller in the switch itself.
+We provide the [P4 program](/dev_root/p4) for the [Tofino Native Architecture (TNA)](https://github.com/barefootnetworks/Open-Tofino) and the [runtime python controller](/dev_root/controller). We assume that you have available and have already compiled the Intel P4 Studio suite in both the switch and the server that will run the controller. You can also run the controller in the switch itself.
 For details on how to obtain and compile Intel P4 Studio, we refer you to the official [Intel documentation](https://www.intel.com/content/www/us/en/products/network-io/programmable-ethernet-switch.html).
 
 ## 2. Library
