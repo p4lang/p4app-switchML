@@ -33,6 +33,7 @@ struct TestConfig{
     float allowed_error_percentage;
     bool random;
     uint32_t seed;
+    bool dump_stats_per_sync;
 };
 
 volatile bool stop = false;
@@ -104,6 +105,8 @@ int main(int argc, char* argv[]) {
             "Initialize the data with random values.")
         ("seed", po::value<uint32_t>(&tconf.seed)->default_value(0), 
             "If you want to fix the seed of the random generator (In case you set random to true). Set to 0 to set to a random seed.")
+        ("dump-stats", po::value<bool>(&tconf.dump_stats_per_sync)->default_value(false), 
+            "Should we print out and clear the switchml statistics after each sync?")
     ;
 
     po::store(po::command_line_parser(argc, argv).options(test_options).run(), vm);
@@ -114,7 +117,35 @@ int main(int argc, char* argv[]) {
         exit(EXIT_SUCCESS);
     }
 
-    // TODO: Verify options:
+    // Verify arguments
+    if (tconf.tensor_numel <= 0) {
+        std::cout << "The number of tensor elements must be greater than 0. '" << tconf.tensor_numel << "' is not valid" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if (tconf.tensor_type != "float" && tconf.tensor_type != "int32") {
+        std::cout << "'" << tconf.tensor_type << "' is not a valid tensor type. Choose from [float, int32]" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if (tconf.device != "cpu"
+#ifdef CUDA
+       && tconf.device != "gpu"
+#endif
+    ) {
+#ifdef CUDA
+        std::cout << "'" << tconf.device << "' is not a valid device. Choose from [gpu, cpu]" << std::endl;
+#else
+        std::cout << "'" << tconf.device << "' is not a valid device. Choose from [cpu]" << std::endl;
+#endif
+        exit(EXIT_FAILURE);
+    }
+    if (tconf.num_jobs <= 0) {
+        std::cout << "The number of jobs must be greater than 0. '" << tconf.num_jobs << "' is not valid" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if (tconf.allowed_error_percentage < 0) {
+        std::cout << "The allowed error percentage must be greater than or equal to 0. '" << tconf.num_jobs << "' is not valid" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
     switchml::Context& ctx = switchml::Context::GetInstance();
 
@@ -256,6 +287,10 @@ int main(int argc, char* argv[]) {
             std::cout << "Job(s) #" << job_str << "# finished. Duration: #" << durations_ns[durations_ns.size()-1] << "# ns Goodput: #" 
                 << tconf.tensor_numel*4.0*8*jobs_before_sync/durations_ns[durations_ns.size()-1] << "# Gbps." << std::endl;
             jobs_before_sync = 0;
+            if(tconf.dump_stats_per_sync) {
+                ctx.GetStats().LogStats();
+                ctx.GetStats().ResetStats();
+            }
             begin = switchml::clock::now();
         }
     }

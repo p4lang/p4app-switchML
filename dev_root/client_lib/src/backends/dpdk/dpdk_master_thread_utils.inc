@@ -301,7 +301,7 @@ void InitPort(DpdkBackendConfig config, uint16_t num_worker_threads) {
     //tx_conf.tx_rs_thresh = 0;
 
     for (uint32_t i=0; i<num_queues; i++){
-        DVLOG(1) << "Initializing rx and tx queues for worker thread '" << i << "'.";
+        VLOG(1) << "Initializing rx and tx queues for worker thread '" << i << "'.";
         // Init the rx mempool
         std::string rx_mempool_name = "wt" + std::to_string(i) + "_rx";
         struct rte_mempool *rx_mempool;

@@ -5,8 +5,8 @@
  */
 
 
-#ifndef BYPASS_PPP_H_
-#define BYPASS_PPP_H_
+#ifndef SWITCHML_BYPASS_PPP_H_
+#define SWITCHML_BYPASS_PPP_H_
 
 #include "common.h"
 #include "job.h"
@@ -85,4 +85,4 @@ class BypassPPP : public PrePostProcessor{
 
 } // namespace switchml
 
-#endif // BYPASS_PPP_H_
+#endif // SWITCHML_BYPASS_PPP_H_

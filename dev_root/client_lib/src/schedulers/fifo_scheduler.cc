@@ -27,7 +27,7 @@ bool FifoScheduler::EnqueueJob(std::shared_ptr<Job> job) {
     this->finished_job_slices_.insert({job->id_, 0});
     this->undispatched_job_slices_.insert({job->id_, this->config_.general_.num_worker_threads});
     this->queue_.push(job);
-    VLOG(1) << "Queued job id: " << job->id_ << " job_type: "
+    DVLOG(2) << "Queued job id: " << job->id_ << " job_type: "
         << job->job_type_ << " numel: " << job->tensor_.numel << " data_type: " << job->tensor_.data_type;
     this->job_submitted_event_.notify_all();
     return true;

@@ -42,10 +42,11 @@ class DpdkBackend : public switchml::Backend {
         uint8_t job_type_size;
 
         /** 
-         * The id of the job associated with this packet.
+         * The 8 LSBs of the id of the job associated with this packet.
          * This is used by the client only to discard duplicates at the edge of switching from one job to another.
-         * */
-        uint8_t job_id;
+         * Therefore we do not need the full length of the job id.
+         */
+        uint8_t short_job_id;
 
         /** An id to identify a packet within a job slice. This is used by the client only. */
         uint32_t pkt_id;

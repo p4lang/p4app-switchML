@@ -5,8 +5,8 @@
  */
 
 
-#ifndef CPU_EXPONENT_QUANTIZER_H_
-#define CPU_EXPONENT_QUANTIZER_H_
+#ifndef SWITCHML_CPU_EXPONENT_QUANTIZER_H_
+#define SWITCHML_CPU_EXPONENT_QUANTIZER_H_
 
 #include "common.h"
 #include "job.h"
@@ -114,4 +114,4 @@ class CpuExponentQuantizerPPP : public PrePostProcessor{
 
 } // namespace switchml
 
-#endif // CPU_EXPONENT_QUANTIZER_H_
+#endif // SWITCHML_CPU_EXPONENT_QUANTIZER_H_

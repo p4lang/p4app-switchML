@@ -195,6 +195,7 @@ struct RdmaBackendConfig {
 };
 #endif
 
+#ifdef DUMMY
 /**
  * @brief Configuration options specific to using the Dummy backend.
  */
@@ -212,6 +213,7 @@ struct DummyBackendConfig {
      */
     bool process_packets;
 };
+#endif
 
 /**
  * @brief The struct that groups all backend related options.
@@ -223,7 +225,9 @@ struct BackendConfig {
 #ifdef RDMA
     struct RdmaBackendConfig rdma;
 #endif
+#ifdef DUMMY
     struct DummyBackendConfig dummy;
+#endif
 };
 
 /**

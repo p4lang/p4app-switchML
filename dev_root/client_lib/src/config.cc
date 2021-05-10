@@ -40,12 +40,14 @@ bool Config::LoadFromFile(std::string path) {
     ;
     config_file_options.add(general_options);
 
+#ifdef DUMMY
     po::options_description dummy_options("backend.dummy");
     dummy_options.add_options()
         ("backend.dummy.bandwidth", po::value<float>(&this->backend_.dummy.bandwidth)->default_value(1000.0))
         ("backend.dummy.process_packets", po::value<bool>(&this->backend_.dummy.process_packets)->default_value(true))
     ;
     config_file_options.add(dummy_options);
+#endif
 
 #ifdef DPDK
     po::options_description dpdk_options("backend.dpdk");
@@ -131,6 +133,10 @@ void Config::Validate() {
 
     LOG_IF(WARNING, this->general_.max_outstanding_packets % this->general_.num_worker_threads != 0)
         << "The chosen max_outstanding_packets is not divisible by num_worker_threads. It will be rounded down to the nearest divisible value. Bandwidth may be underutilized";
+
+    if(this->general_.backend == "dpdk") {
+        LOG_IF(FATAL, this->general_.packet_numel != 256 && this->general_.packet_numel != 64) << "The DPDK backend only supports 256 or 64 elements per packet. '" << this->general_.packet_numel << "' is not valid.";
+    }
 }
 
 void Config::PrintConfig() {
@@ -147,11 +153,13 @@ void Config::PrintConfig() {
         << "\n    prepostprocessor = " << this->general_.prepostprocessor
         << "\n    instant_job_completion = " << this->general_.instant_job_completion
     ;
-    
+
+#ifdef DUMMY
     VLOG_IF(0, this->general_.backend == "dummy") << "\n[backend.dummy]"
         << "\n    bandwidth = " << this->backend_.dummy.bandwidth
         << "\n    process_packets = " << this->backend_.dummy.process_packets
     ;
+#endif
 
 #ifdef DPDK
     VLOG_IF(0, this->general_.backend == "dpdk") << "[backend.dpdk]"

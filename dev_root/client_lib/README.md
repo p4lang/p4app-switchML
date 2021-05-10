@@ -18,6 +18,8 @@ It helps ensure that the software stack is operating correctly down to the backe
 
 The DPDK backend uses the DPDK library to perform collective operations with the UDP transport. Thus it supports all of the NICs and drivers that DPDK supports (we tested only Intel and Mellanox NICs so far).
 
+**Important** The DPDK backend requires root access. So whether you are running a benchmark, an example, or using it through pytorch, you must give your application root privileges.
+
 ### 1.3 RDMA Backend
 
 The RDMA Backend uses ibverbs directly to perform communication using RDMA as a transport and it usually outperforms DPDK on more than 10Gbps NICs because of the additional hardware offloads. However, you must have a NIC that supports RDMA.

@@ -92,7 +92,6 @@ void BuildPacket(rte_mbuf* mbuf, JobId job_id, uint32_t pkt_id,
 
     // 4. Switchml header
     // Categorize the length of the packet
-    // SUGGESTION: Move to dpdk_worker_thread to be computed once 
     uint8_t pkt_len_enum;
     if (packet_numel < 64) {
         pkt_len_enum = 0;
@@ -109,7 +108,7 @@ void BuildPacket(rte_mbuf* mbuf, JobId job_id, uint32_t pkt_id,
     switchml_pkt_hdr->pkt_id = pkt_id;
     switchml_pkt_hdr->switch_pool_index = rte_cpu_to_be_16(switch_pool_index);
     switchml_pkt_hdr->job_type_size = (1 << 4) + pkt_len_enum; // bit shift for host to network byte order
-    switchml_pkt_hdr->job_id = job_id;
+    switchml_pkt_hdr->short_job_id = job_id; // Select the 8 LSBs of the job id
 
     // Preprocess the packet (Copying/quantizing is done here)
     DpdkBackend::DpdkPacketElement* entries_ptr = reinterpret_cast<DpdkBackend::DpdkPacketElement*>(switchml_pkt_hdr+1);
@@ -213,7 +212,7 @@ void ResendPacketCallback(struct rte_timer *timer, void *arg) {
     static thread_local uint64_t timeout_threshold = args->dwt->config_.backend_.dpdk.timeout_threshold;
     timeouts_counter++;
     
-    DVLOG(3) << "Timeout occured. Resending packet job_id=" << (int) args->job_id << " pkt_id="
+    DVLOG(3) << "Timeout occured. Resending packet short_job_id=" << (uint8_t) args->job_id << " pkt_id="
                     << args->pkt_id;
 
     // If timeouts_counter exceeded the threshold then update the timer cycles

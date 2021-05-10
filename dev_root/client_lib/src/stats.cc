@@ -100,6 +100,9 @@ void Stats::ResetStats() {
 }
 
 std::string Stats::DescribeIntList(std::vector<uint64_t> list) {
+    if(list.size() == 0) {
+        return "";
+    }
     // Sum
     uint64_t sum = std::accumulate(list.begin(), list.end(), (uint64_t)0);
     // Mean
@@ -125,6 +128,9 @@ std::string Stats::DescribeIntList(std::vector<uint64_t> list) {
 }
 
 std::string Stats::DescribeFloatList(std::vector<double> list) {
+    if(list.size() == 0) {
+        return "";
+    }
     // Sum
     double sum = std::accumulate(list.begin(), list.end(), (double)0);
     // Mean

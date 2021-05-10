@@ -29,7 +29,7 @@ Scheduler::Scheduler(Config& config) :
 
 void Scheduler::Stop() {
     std::unique_lock<std::mutex> lock(this->access_mutex_);
-    VLOG(2) << "Waking up waiting threads";
+    VLOG(1) << "Waking up waiting threads";
     this->stopped_ = true;
     this->job_submitted_event_.notify_all();
 }

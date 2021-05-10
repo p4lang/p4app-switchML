@@ -172,7 +172,7 @@ void Context::NotifyJobSliceCompletion(WorkerTid worker_thread_id, const JobSlic
         std::unique_lock<std::mutex> lock(this->access_mutex_);
         this->number_of_current_jobs_--;
         this->stats_.IncJobsFinishedNum();
-        VLOG(1) << "Finished Job with id: " << job_slice.job->id_ << " status: " << job_slice.job->GetJobStatus()
+        DVLOG(2) << "Finished Job with id: " << job_slice.job->id_ << " status: " << job_slice.job->GetJobStatus()
             << ". Currently running jobs: " << this->number_of_current_jobs_ << ".";
         // If current jobs = 0 wake up threads waiting for all jobs;
         if(!this->number_of_current_jobs_) {

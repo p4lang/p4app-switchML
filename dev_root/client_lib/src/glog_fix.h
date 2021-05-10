@@ -1,5 +1,5 @@
 /**
- * @file glog_fixes.h
+ * @file glog_fix.h
  * @brief This file contains some workarounds for problems with 
  * the glog library version 3.5 (the version that we are currently using).
  * it seems that version 4.0 also suffers from the same issues.

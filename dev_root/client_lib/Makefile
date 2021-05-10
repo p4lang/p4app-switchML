@@ -8,6 +8,7 @@
 # - DEBUG (0): Disable optimizations, add debug symbols, and enable detailed debugging messages.
 # - DPDK (0): Compile and include the dpdk backend.
 # - RDMA (0): Compile and include the rdma backend.
+# - DUMMY (1): Compile and include the dummy backend.
 # - VCL (1): Compile with the vector class library (Used to speedup prepostprocessing on the CPU)
 # - TIMEOUTS (1): Compile with timeouts and retransmissions support.
 #
@@ -20,8 +21,8 @@ INCDIR_ := $(BUILDDIR)/include/switchml
 LIBDIR_ := $(BUILDDIR)/lib
 OBJDIR_ := $(BUILDDIR)/obj
 SRCDIR_ ?= $(MKDIR_)/src
-SRCDIRS_ := $(SRCDIR_) $(SRCDIR_)/prepostprocessors $(SRCDIR_)/schedulers $(SRCDIR_)/backends/dummy # The directories that we include by default.
-CFGFILES := $(SRCDIR_)/configs/general.cfg $(SRCDIR_)/configs/dummy.cfg
+SRCDIRS_ := $(SRCDIR_) $(SRCDIR_)/prepostprocessors $(SRCDIR_)/schedulers # The directories that we include by default.
+CFGFILES := $(SRCDIR_)/configs/general.cfg
 LIB ?= libswitchml-client.a # Name constraint from DPDK
 
 ifeq ($(DPDK),1)
@@ -44,6 +45,14 @@ $(info DEBUG is not set. Enabling all optimizations.)
 CXXFLAGS += -DNDEBUG -O3 
 endif
 
+ifeq ($(DUMMY),0)
+ifneq ($(DPDK),1)
+ifneq ($(RDMA),1)
+$(error You must enable at least one backend)
+endif
+endif
+endif
+
 ifeq ($(DPDK),1)
 
 $(info DPDK set. Compiling the dpdk backend..)
@@ -64,6 +73,13 @@ $(error RDMA set (Not implemented yet))
 CXXFLAGS += -DRDMA
 SRCDIRS_ += $(SRCDIR_)/backends/rdma
 CFGFILES += $(SRCDIR_)/configs/rdma.cfg
+endif
+
+ifneq ($(DUMMY),0)
+$(info DUMMY set. Compiling the dummy backend..)
+CXXFLAGS += -DDUMMY
+SRCDIRS_ += $(SRCDIR_)/backends/dummy
+CFGFILES += $(SRCDIR_)/configs/dummy.cfg
 endif
 
 ifneq ($(VCL), 0)

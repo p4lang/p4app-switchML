@@ -36,9 +36,8 @@ DpdkWorkerThread::DpdkWorkerThread(Context& context, DpdkBackend& backend, Confi
     ,timer_cycles_(0)
 #endif
 {
-    this->ppp_ = PrePostProcessor::CreateInstance(config, this->tid_);
-    // Each worker thread has its own udp port
-    this->worker_thread_e2e_addr_be_.port = rte_cpu_to_be_16(config_.backend_.dpdk.worker_port + this->tid_);
+    // Initializing objects by the thread that will use them improves performance slightly.
+    // Thus we initialize the PPP in operator()
 }
 
 DpdkWorkerThread::~DpdkWorkerThread(){
@@ -48,7 +47,11 @@ DpdkWorkerThread::~DpdkWorkerThread(){
 void DpdkWorkerThread::operator()() {
     int ret;
 
+    this->ppp_ = PrePostProcessor::CreateInstance(this->config_, this->tid_);
+    // Each worker thread has its own udp port
+    this->worker_thread_e2e_addr_be_.port = rte_cpu_to_be_16(config_.backend_.dpdk.worker_port + this->tid_);
     this->lcore_id_ = rte_lcore_id();
+
     VLOG(0) << "Worker thread '" << this->tid_ << "' starting on core '" << this->lcore_id_ << "'";
 
     // Shortcuts
@@ -70,8 +73,8 @@ void DpdkWorkerThread::operator()() {
     uint32_t switch_pool_index_start = switch_pool_size * this->tid_;
 
     // For the switch to function properly we must always use an incremental pool index.
-    // we cannot suddenly stop and start from pool index 0. This is due to some implementation detail
-    // that is out of our scope here. So this shift keeps track of where the last job finished so that
+    // we cannot suddenly stop and start from pool index 0. This is due to some implementation detail in 
+    // our P4 program that is out of our scope here. So this shift keeps track of where the last job finished so that
     // the new job can pick up from the next pool index.
     uint32_t switch_pool_index_shift = 0;
 
@@ -149,8 +152,7 @@ void DpdkWorkerThread::operator()() {
             continue;
         }
         DVLOG(2) << "Worker thread '" << this->tid_ << "' received job slice with job id: " << job_slice.job->id_ << " with numel: " << job_slice.slice.numel << ".";
-
-        if(unlikely(this->config_.general_.instant_job_completion)) {
+        if(unlikely(job_slice.slice.numel <=0 || this->config_.general_.instant_job_completion)) {
             if(ctx.GetContextState() == Context::ContextState::RUNNING) {
                 DVLOG(2) << "Worker thread '" << this->tid_ << "' notifying job slice completion with job id: " << job_slice.job->id_  << ".";
                 ctx.NotifyJobSliceCompletion(this->tid_, job_slice);
@@ -182,6 +184,14 @@ void DpdkWorkerThread::operator()() {
         struct rte_bitmap* bitmap = rte_bitmap_init(total_num_pkts, static_cast<uint8_t*>(bitmap_mem), bitmap_size);
         LOG_IF(FATAL, unlikely(bitmap == NULL)) << "Worker thread '" << this->tid_ << "' Failed to init bitmap.";
         rte_bitmap_reset(bitmap);
+
+
+        // Initialize statistic variables.
+        // We found that using local variables for the inner loops speeds things up.
+        // We then push those local variables to the context statistics object at the end of each job.
+        uint64_t stats_wrong_pkts_received = 0;
+        uint64_t stats_correct_pkts_received = 0;
+        uint64_t stats_total_pkts_sent = 0;
 
 #ifdef TIMEOUTS
         this->timer_cycles_ = initial_timer_cycles; // cycles for 1 ms
@@ -235,7 +245,7 @@ void DpdkWorkerThread::operator()() {
             DVLOG(3) << "Worker thread '" << this->tid_ << "' First batch sent " << nb_tx << "/" << batch_num_pkts << ".";
         } while (num_sent_pkts < batch_num_pkts);
 
-        ctx.GetStats().AddTotalPktsSent(this->tid_, num_sent_pkts);
+        stats_total_pkts_sent += num_sent_pkts;
 
         // loop until all packets have been sent and received.
         // This is where optimization is MOST important.
@@ -255,14 +265,12 @@ void DpdkWorkerThread::operator()() {
                 if(unlikely(cur_tsc - prev_tsc > drain_tsc)) {
                     nb_tx = rte_eth_tx_buffer_flush(dpdkconf.port_id, this->tid_, tx_buffer);
                     prev_tsc = cur_tsc;
-                    ctx.GetStats().AddTotalPktsSent(this->tid_, nb_tx);
+                    stats_total_pkts_sent += nb_tx;
                 }
 
 #ifdef TIMEOUTS
                 // Check timers
                 timer_cur_tsc = cur_tsc;
-                // DLOG_EVERY_N(INFO, 10) << "timer_cur_tsc=" << timer_cur_tsc << " timer_prev_tsc = " << timer_prev_tsc << " timer_cur_tsc - timer_prev_tsc = "
-                //     << timer_cur_tsc - timer_prev_tsc << " this->timer_cycles_=" << this->timer_cycles_;
                 if (unlikely(timer_cur_tsc - timer_prev_tsc > this->timer_cycles_)) {
                     rte_timer_manage();
                     timer_prev_tsc = timer_cur_tsc;
@@ -287,23 +295,23 @@ void DpdkWorkerThread::operator()() {
 
                 // Have we received this packet before ?
                 if(unlikely(rte_bitmap_get(bitmap, pkt_id) == 1)) {
-                    DVLOG(3) << "Worker thread '" << this->tid_ << "' Discarded duplicate packet job_id=" << (int) switchml_hdr->job_id
+                    DVLOG(3) << "Worker thread '" << this->tid_ << "' Discarded duplicate packet short_job_id=" << (int) switchml_hdr->short_job_id
                         << " pkt_id=" << pkt_id;
                     rte_pktmbuf_free(mbuf);
-                    ctx.GetStats().AddWrongPktsReceived(this->tid_, 1);
+                    stats_wrong_pkts_received++;
                     continue;
                 }
 
                 // Is this packet for the current running job ?
-                if(unlikely(switchml_hdr->job_id != job_slice.job->id_)) {
-                    DVLOG(3) << "Worker thread '" << this->tid_ << "' Discarded packet from wrong job. job_id=" << (int) switchml_hdr->job_id
+                if(unlikely(switchml_hdr->short_job_id != (uint8_t) job_slice.job->id_)) {
+                    DVLOG(3) << "Worker thread '" << this->tid_ << "' Discarded packet from wrong job. short_job_id=" << (int) switchml_hdr->short_job_id
                         << " pkt_id=" << pkt_id;
                     rte_pktmbuf_free(mbuf);
-                    ctx.GetStats().AddWrongPktsReceived(this->tid_, 1);
+                    stats_wrong_pkts_received++;
                     continue;
                 }
 
-                DVLOG(3) << "Worker thread '" << this->tid_ << "' Accepted packet job_id=" << (int) switchml_hdr->job_id
+                DVLOG(3) << "Worker thread '" << this->tid_ << "' Accepted packet short_job_id=" << (int) switchml_hdr->short_job_id
                     << " pkt_id=" << pkt_id;
 
                 DpdkBackend::DpdkPacketElement* entries_ptr = reinterpret_cast<DpdkBackend::DpdkPacketElement*>(switchml_hdr+1);
@@ -314,7 +322,7 @@ void DpdkWorkerThread::operator()() {
 
                 rte_bitmap_set(bitmap, pkt_id); // Mark this packet as received in the bitmap
 
-                ctx.GetStats().AddCorrectPktsReceived(this->tid_, 1);
+                stats_correct_pkts_received++;
 
                 // The next packet id of this mbuf (Or the packet that will use the same slot)
                 pkt_id += batch_num_pkts;
@@ -331,7 +339,7 @@ void DpdkWorkerThread::operator()() {
                 }
 
                 // Reuse the mbuf for the next packet
-                DVLOG(3) << "Worker thread '" << this->tid_ << "' Reusing mbuf to send packet job_id=" << (int) switchml_hdr->job_id << " pkt_id=" << pkt_id;
+                DVLOG(3) << "Worker thread '" << this->tid_ << "' Reusing mbuf to send packet short_job_id=" << (int) switchml_hdr->short_job_id << " pkt_id=" << pkt_id;
 
                 uint16_t switch_pool_index = PktId2PoolIndex(pkt_id, switch_pool_index_start, switch_pool_index_shift, max_outstanding_pkts);
                 ReusePacket(mbuf, pkt_id, genconf.packet_numel, switch_pool_index, bk.GetSwitchE2eAddr(),
@@ -340,7 +348,7 @@ void DpdkWorkerThread::operator()() {
                 // Send the packet
                 nb_tx = rte_eth_tx_buffer(dpdkconf.port_id, this->tid_, tx_buffer, mbuf);
                 if (nb_tx) {
-                    ctx.GetStats().AddTotalPktsSent(this->tid_, nb_tx);
+                    stats_total_pkts_sent += nb_tx;
                     prev_tsc = cur_tsc;
                 }
 #ifdef TIMEOUTS
@@ -369,7 +377,12 @@ void DpdkWorkerThread::operator()() {
 
         this->ppp_->CleanupJobSlice();
 
-        // Notify the ctx that the worker thread finished this job slice.
+        // Add the local stats to the context stats object.
+        ctx.GetStats().AddCorrectPktsReceived(this->tid_, stats_correct_pkts_received);
+        ctx.GetStats().AddTotalPktsSent(this->tid_, stats_total_pkts_sent);
+        ctx.GetStats().AddWrongPktsReceived(this->tid_, stats_wrong_pkts_received);
+
+        // Finally notify the ctx that the worker thread finished this job slice.
         if(ctx.GetContextState() == Context::ContextState::RUNNING) {
             DVLOG(2) << "Worker thread '" << this->tid_ << "' notifying job slice completion with job id: " << job_slice.job->id_  << ".";
             ctx.NotifyJobSliceCompletion(this->tid_, job_slice);

@@ -9,7 +9,9 @@
 #include "backend.h"
 
 #include "common_cc.h"
+#ifdef DUMMY
 #include "dummy_backend.h"
+#endif
 #ifdef RDMA
 #include "rdma_backend.h"
 #endif
@@ -22,7 +24,11 @@ namespace switchml {
 std::unique_ptr<Backend> Backend::CreateInstance(Context& context, Config& config) {
     std::string& backend = config.general_.backend;
     if(backend == "dummy") {
+#ifdef DUMMY
         return std::make_unique<DummyBackend>(context, config);
+#else
+        LOG(FATAL) << "SwitchML was not compiled with '" << backend << "' backend support.";
+#endif
     }
     if (backend == "rdma") {
 #ifdef RDMA
