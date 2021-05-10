@@ -20,7 +20,7 @@ BUILDDIR ?= $(shell pwd)/build # Expand absolute path for sub makefiles
 .PHONY: default
 default: third_party client_lib examples benchmarks
 
-# This target was created to conveniently rebuild the project after a source code change
+# This target was created to conveniently rebuild the library, examples, and benchmarks after a source code change to allow quick testing.
 .PHONY: rebuild
 rebuild: clean client_lib examples benchmarks
 
@@ -39,6 +39,14 @@ examples:
 .PHONY: benchmarks
 benchmarks: 
 	$(MAKE) -C benchmarks/ BUILDDIR=$(BUILDDIR)
+
+.PHONY: pytorch_patch
+pytorch_patch: 
+	$(MAKE) -C frameworks_integration/pytorch_patch/ BUILDDIR=$(BUILDDIR)
+
+.PHONY: nccl_plugin
+nccl_plugin: 
+	$(MAKE) -C frameworks_integration/nccl_plugin/ BUILDDIR=$(BUILDDIR)
 
 .PHONY: clean
 clean:

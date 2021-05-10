@@ -1,0 +1,179 @@
+diff --git a/torch/csrc/distributed/c10d/init.cpp b/torch/csrc/distributed/c10d/init.cpp
+index 715403ac57..5e584acba8 100644
+--- a/torch/csrc/distributed/c10d/init.cpp
++++ b/torch/csrc/distributed/c10d/init.cpp
+@@ -1,3 +1,10 @@
++#ifdef USE_SWITCHML
++#pragma message("USE_SWITCHML enabled in init.cpp")
++#else
++#pragma message("USE_SWITCHML was not enabled in init.cpp. We will enable it now.")
++#define USE_SWITCHML
++#endif
++
+ #include <torch/csrc/python_headers.h>
+ 
+ #include <c10d/FileStore.hpp>
+@@ -913,7 +920,14 @@ Arguments:
+             }
+ 
+             options.timeout = timeout;
++#ifndef USE_SWITCHML
+             options.threads = options.devices.size() * 2;
++#else
++            // We set options.threads to 1 because switchml only supports the existence of 1 context.
++            // Also we need only 1 thread to submit to switchml to ensure that tensors are processed by switchml
++            // in the same order across workers.
++            options.threads = 1;
++#endif
+             return std::make_shared<::c10d::ProcessGroupGloo>(
+                 store, rank, size, options);
+           }),
+diff --git a/torch/lib/c10d/CMakeLists.txt b/torch/lib/c10d/CMakeLists.txt
+index 4b206f3801..6dd1c3c221 100644
+--- a/torch/lib/c10d/CMakeLists.txt
++++ b/torch/lib/c10d/CMakeLists.txt
+@@ -1,5 +1,13 @@
+ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+ 
++if(DEFINED ENV{SWITCHML_HOME})
++  add_definitions(-DUSE_SWITCHML=1)
++  message(STATUS "Building c10D with switchml support. SWITCHML_HOME: $ENV{SWITCHML_HOME}")
++  if(DEFINED ENV{DPDK_HOME})
++    message(STATUS "Building c10D with switchml dpdk backend support. DPDK_HOME: $ENV{DPDK_HOME}")
++  endif()
++endif()
++
+ # Find modules.
+ list(APPEND CMAKE_MODULE_PATH
+   ${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/public
+@@ -76,8 +84,22 @@ if(USE_C10D_GLOO)
+ endif()
+ 
+ add_library(c10d STATIC ${C10D_SRCS})
++
++if(DEFINED ENV{SWITCHML_HOME})
++  target_include_directories(c10d PUBLIC $ENV{SWITCHML_HOME}/include)
++  target_link_directories(c10d PUBLIC $ENV{SWITCHML_HOME}/lib)
++  if(DEFINED ENV{DPDK_HOME})
++    target_link_directories(c10d PUBLIC $ENV{DPDK_HOME}/lib)
++  endif()
++
++  # The following line should be replaced automatically using the pytorch patch make file to 
++  # include the appropriate libraries based on your switchml compilation flags.
++  #SWITCHML_LINK_LIBRARIES_LINE#
++
++endif()
++
+ set_property(TARGET c10d PROPERTY POSITION_INDEPENDENT_CODE ON)
+-set_property(TARGET c10d PROPERTY CXX_STANDARD 14)
++set_property(TARGET c10d PROPERTY CXX_STANDARD 17)
+ 
+ if(NOT MSVC)
+   target_compile_options(c10d PUBLIC
+diff --git a/torch/lib/c10d/ProcessGroupGloo.cpp b/torch/lib/c10d/ProcessGroupGloo.cpp
+index c139ac7a34..59dbf1731a 100644
+--- a/torch/lib/c10d/ProcessGroupGloo.cpp
++++ b/torch/lib/c10d/ProcessGroupGloo.cpp
+@@ -1,3 +1,11 @@
++// TODO: find in which cmake file to add USE_SWITCHML
++#ifdef USE_SWITCHML
++#pragma message("USE_SWITCHML enabled in ProcessGroupGloo.cpp")
++#else
++#pragma message("USE_SWITCHML was not enabled in ProcessGroupGloo.cpp. We will enable it now.")
++#define USE_SWITCHML
++#endif
++
+ #include <c10d/ProcessGroupGloo.hpp>
+ 
+ #include <c10d/GlooDeviceFactory.hpp>
+@@ -37,6 +45,10 @@
+ #include <c10/cuda/CUDAStream.h>
+ #endif
+ 
++#ifdef USE_SWITCHML
++#include <switchml/context.h>
++#endif
++
+ #include <c10/util/StringUtil.h>
+ #include <gloo/config.h>
+ #include <gloo/rendezvous/context.h>
+@@ -574,6 +586,11 @@ ProcessGroupGloo::ProcessGroupGloo(
+     throw std::runtime_error("No device(s) specified");
+   }
+ 
++#ifdef USE_SWITCHML
++  // Create and start the switchml context
++  switchml::Context::GetInstance().Start();
++#endif
++
+   // Create and connect a context for every device.
+   //
+   // Note that the same device can be specified multiple times, either
+@@ -623,6 +640,10 @@ ProcessGroupGloo::~ProcessGroupGloo() {
+   for (auto& thread : threads_) {
+     thread.join();
+   }
++
++#ifdef USE_SWITCHML
++  switchml::Context::GetInstance().Stop();
++#endif
+ }
+ 
+ uint32_t ProcessGroupGloo::nextTag() {
+@@ -1187,8 +1208,15 @@ class AsyncAllreduceCUDAWork : public AsyncAllreduceWork {
+       ReduceOp reduceOp,
+       uint32_t tag)
+       : AsyncAllreduceWork(context, inputs, reduceOp, tag) {
++#ifdef USE_SWITCHML
++    const auto& scalarType = inputs[0].scalar_type();
++    // These are the cases where we will use switchml. Otherwise we let gloo handle it.
++    this->SWITCHML = inputs.size()==1 && // Means that a single GPU is used per host
++                     reduceOp == ReduceOp::SUM &&
++                     (scalarType == ::at::ScalarType::Float || scalarType == ::at::ScalarType::Int);
++#endif
+     initializeStreamsEvents(inputs, streams, events);
+-
++    
+     // Kick off copy from CUDA tensors to pinned CPU tensors.
+     tmp.reserve(inputs.size());
+     at::cuda::OptionalCUDAStreamGuard guard;
+@@ -1207,6 +1235,31 @@ class AsyncAllreduceCUDAWork : public AsyncAllreduceWork {
+     }
+ 
+     // Run allreduce on host side tensors.
++    // TODO: Pass original tensors not the temporary host side and let switchml handle it.
++#ifdef USE_SWITCHML
++    if(this->SWITCHML) {
++      // We only support 1 GPU per host.
++      // TODO: Generalize this to multi-gpus by performing a local allreduce.
++      GLOO_ENFORCE(tmp.size() == 1);
++      
++      const auto& scalarType = tmp[0].scalar_type();
++      switch(scalarType) {
++        case ::at::ScalarType::Float: {
++          float* data_ptr = getDataPointer<float>(tmp[0]);
++          switchml::Context::GetInstance().AllReduce(data_ptr, data_ptr, tmp[0].numel(), switchml::DataType::FLOAT32, switchml::AllReduceOperation::SUM);
++          break;
++        }
++        case ::at::ScalarType::Int: {
++          int32_t* data_ptr = getDataPointer<int32_t>(tmp[0]);
++          switchml::Context::GetInstance().AllReduce(data_ptr, data_ptr, tmp[0].numel(), switchml::DataType::INT32, switchml::AllReduceOperation::SUM);
++          break;
++        }
++        default:
++          std::cerr << "Data type error. This tensor cannot be passed to switchml. Data type: " << scalarType << std::endl;
++      }
++    }
++    else
++#endif
+     allreduce(tmp);
+ 
+     at::cuda::OptionalCUDAStreamGuard stream_guard;
+@@ -1228,6 +1281,7 @@ class AsyncAllreduceCUDAWork : public AsyncAllreduceWork {
+     }
+   }
+ 
++  bool SWITCHML;
+   std::vector<at::Tensor> tmp;
+   std::vector<at::cuda::CUDAStream> streams;
+   std::vector<at::cuda::CUDAEvent> events;

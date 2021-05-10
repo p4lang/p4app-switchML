@@ -1,0 +1,32 @@
+# SwitchML Project
+# @file environment.yml
+# @brief The environment used to build pytorch with switchml.
+
+channels:
+  - conda-forge
+  - defaults
+  - pytorch
+
+dependencies:
+  - defaults::boost-cpp=1.65
+  - cmake 
+  - cudatoolkit-dev=10.1
+  - cudnn
+  - magma-cuda101
+  - mkl
+  - mkl-include
+  - ninja
+  - numpy<2
+  - pip=20.0
+  - python=3.7
+  - pyyaml
+  - scipy
+  - setuptools
+  - six<2
+  - cffi
+  - typing_extensions
+  - future
+  - requests
+  - dataclasses
+  - openmpi
+  - mpi4py

@@ -1,0 +1,83 @@
+diff --git a/src/init.cc b/src/init.cc
+index 2be994d..0026739 100644
+--- a/src/init.cc
++++ b/src/init.cc
+@@ -68,31 +68,25 @@ ncclResult_t initCollNet(ncclCollNet_t* collnet) {
+ ncclResult_t initNetPlugin(ncclNet_t** net, ncclCollNet_t** collnet) {
+   void* netPluginLib = dlopen("libnccl-net.so", RTLD_NOW | RTLD_LOCAL);
+   if (netPluginLib == NULL) {
+-    // dlopen does not guarantee to set errno, but dlerror only gives us a
+-    // string, so checking errno doesn't hurt to try to provide a better
+-    // error message
+-    if (errno == ENOENT) {
+-      INFO(NCCL_INIT|NCCL_NET, "NET/Plugin : No plugin found (libnccl-net.so), using internal implementation");
+-    } else {
+-      INFO(NCCL_INIT|NCCL_NET, "NET/Plugin : Plugin load returned %d : %s.", errno, dlerror());
+-    }
++    INFO(NCCL_INIT|NCCL_NET, "NET/Plugin : Plugin load returned %d : %s.", errno, dlerror());
+     return ncclSuccess;
+   }
+   ncclNet_t* extNet = (ncclNet_t*) dlsym(netPluginLib, STR(NCCL_PLUGIN_SYMBOL));
+   if (extNet == NULL) {
+     INFO(NCCL_INIT|NCCL_NET, "NET/Plugin: Failed to find " STR(NCCL_PLUGIN_SYMBOL) " symbol.");
+-  } else if (initNet(extNet) == ncclSuccess) {
++  } else if (extNet->name == NULL || initNet(extNet) == ncclSuccess) {
+     *net = extNet;
+-    // Check for CollNet
+-    ncclCollNet_t* extCollNet = (ncclCollNet_t*) dlsym(netPluginLib, STR(NCCL_COLLNET_PLUGIN_SYMBOL));
+-    if (extCollNet == NULL) {
+-      INFO(NCCL_INIT|NCCL_NET, "NET/Plugin: Failed to find " STR(NCCL_COLLNET_PLUGIN_SYMBOL) " symbol.");
+-    } else if (initCollNet(extCollNet) == ncclSuccess) {
+-      *collnet = extCollNet;
+-    }
+-    return ncclSuccess;
+   }
+-  if (netPluginLib != NULL) dlclose(netPluginLib);
++  // Check for CollNet
++  ncclCollNet_t* extCollNet = (ncclCollNet_t*) dlsym(netPluginLib, STR(NCCL_COLLNET_PLUGIN_SYMBOL));
++  if (extCollNet == NULL) {
++    INFO(NCCL_INIT|NCCL_NET, "NET/Plugin: Failed to find " STR(NCCL_COLLNET_PLUGIN_SYMBOL) " symbol.");
++  } else {
++    *collnet = extCollNet;
++  }
++  if (extNet == NULL && extCollNet == NULL) {
++    dlclose(netPluginLib);
++  }
+   return ncclSuccess;
+ }
+ 
+@@ -101,12 +95,29 @@ ncclResult_t initNet() {
+   NCCLCHECK(bootstrapNetInit());
+ 
+   NCCLCHECK(initNetPlugin(&ncclNet, &ncclCollNet));
+-  if (ncclNet != NULL) return ncclSuccess;
+-  if (initNet(&ncclNetIb) == ncclSuccess) {
+-    ncclNet = &ncclNetIb;
++  if (ncclNet == NULL) {
++    if (initNet(&ncclNetIb) == ncclSuccess) {
++      ncclNet = &ncclNetIb;
++    } else {
++      NCCLCHECK(initNet(&ncclNetSocket));
++      ncclNet = &ncclNetSocket;
++    }
++  } else if (ncclNet->name == NULL){
++    *ncclNet = ncclNetIb;
++    if (initNet(ncclNet) != ncclSuccess) {
++      *ncclNet = ncclNetSocket;
++      NCCLCHECK(initNet(ncclNet));
++    }
+   } else {
+-    NCCLCHECK(initNet(&ncclNetSocket));
+-    ncclNet = &ncclNetSocket;
++      INFO(NCCL_INIT|NCCL_NET, "NET/Plugin : Using plugin: %s.", ncclNet->name);
++  }
++  if (ncclCollNet != NULL) {
++    if (initCollNet(ncclCollNet) != ncclSuccess) {
++      INFO(NCCL_INIT|NCCL_NET, "NET/Plugin: Failed to initialize " STR(NCCL_COLLNET_PLUGIN_SYMBOL) " symbol.");
++      ncclCollNet = NULL;
++    } else {
++      INFO(NCCL_INIT|NCCL_NET, "NET/Plugin : Using collectives plugin: %s.", ncclCollNet->name);
++    }
+   }
+   return ncclSuccess;
+ }
