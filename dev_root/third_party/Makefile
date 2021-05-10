@@ -14,6 +14,8 @@
 ifeq ($(DEBUG),1)
 $(info Compiling third_party with DEBUG)
 CXXFLAGS += -DDEBUG -O0 -g
+else
+CXXFLAGS += -O3
 endif
 
 MLX ?= 5

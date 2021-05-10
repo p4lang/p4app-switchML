@@ -208,11 +208,14 @@ void CpuExponentQuantizerPPP::PostprocessSingle(uint64_t pkt_id, void* entries_p
                 vectorial_float_data.store(out_ptr + i);
             }
 #endif
+            // If we do not set this iterator to volatile the optimizer tries to optimize this loop and ends up causing a segfault for 
+            // specific number of elements (255) for example.
+            // Since this portion of the code is only executed rarely this does not affect performance.
+            volatile uint64_t j = i; 
             // Dequantize the remainder elements.
-            uint64_t j = i; // TODO: Invistigate why using a new variable j instead of i fixes the occasional segfault that happens with dpdk (255 float elements with 4 cores).
             for (; j < packet_numel; j++) {
-                int32_t in_be = (int32_t) ntohl(in_ptr[i]);
-                out_ptr[i] = in_be / this->scaling_factors_[pkt_id];
+                int32_t in_be = (int32_t) ntohl(in_ptr[j]);
+                out_ptr[j] = in_be / this->scaling_factors_[pkt_id];
                 DVLOG(4) << "Worker thread '" << this->worker_tid_ 
                     << "' slice_index=" << job_slice_numel_offset + i
                     << "' out_ptr[" << i << "]=" << out_ptr[i] 
@@ -242,7 +245,7 @@ void CpuExponentQuantizerPPP::PostprocessSingle(uint64_t pkt_id, void* entries_p
         uint64_t remaining_numel = this->job_slice_->slice.numel - job_slice_numel_offset;
         uint64_t packet_numel = std::min(this->config_.general_.packet_numel, remaining_numel);
 
-        DVLOG(3) << "Converting endinannes/unloading pkt_id=" << pkt_id << 
+        DVLOG(3) << "Worker thread '" << this->worker_tid_ << "' Converting endinannes/unloading pkt_id=" << pkt_id << 
             " [" << job_slice_numel_offset << "-" << (job_slice_numel_offset + packet_numel - 1) << "]";
 
         uint64_t i = 0;
@@ -255,9 +258,13 @@ void CpuExponentQuantizerPPP::PostprocessSingle(uint64_t pkt_id, void* entries_p
             permute64<ENDIANESS_CONVERSION>(vectorial_byte_data).store(out_ptr + i);
         }
 #endif
+        // If we do not set this iterator to volatile the optimizer tries to optimize this loop and ends up causing a segfault for 
+        // specific number of elements (255) for example.
+        // Since this portion of the code is only executed rarely this does not affect performance.
+        volatile uint64_t j = i;
         // Convert the remainder elements.
-        for (;i < packet_numel; i++) {
-            out_ptr[i] = ntohl(in_ptr[i]);
+        for (;j < packet_numel; j++) {
+            out_ptr[j] = ntohl(in_ptr[j]);
             DVLOG(4) << "Worker thread '" << this->worker_tid_ 
                 << "' slice_index=" << job_slice_numel_offset + i
                 << "' out_ptr[" << i << "]=" << out_ptr[i] 
