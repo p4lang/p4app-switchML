@@ -62,7 +62,7 @@ exhale_args = {
     # These arguments are required
     "containmentFolder":     "./client_lib_api", # For some reason this folder cannot be inside the build directory
     "rootFileName":          "client_lib_root.rst",
-    "rootFileTitle":         "Client Library API",
+    "rootFileTitle":         "SwitchML Client Library API",
     "doxygenStripFromPath":  "..",
     # Suggested optional arguments
     "createTreeView":        True,

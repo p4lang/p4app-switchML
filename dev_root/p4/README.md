@@ -1,4 +1,4 @@
-# Switch P4
+# SwitchML P4 program
 
 The SwitchML P4 program is written in P4-16 for the [Tofino Native Architecture (TNA)](https://github.com/barefootnetworks/Open-Tofino) and the controller uses the Barefoot Runtime Interface (BRI) to program the switch.
 

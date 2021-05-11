@@ -1,4 +1,4 @@
-# Switch Controller
+# SwitchML Controller
 
 The SwitchML controller will program the switch at runtime using the Barefoot Runtime Interface (BRI). The controller accepts connections from end-hosts through gRPC to set up a job (which is a sequence of allreduce operations involving the same set of workers). It also provides a CLI interface that can be used to configure the switch and read counters values at runtime.
 

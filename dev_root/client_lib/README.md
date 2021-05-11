@@ -1,5 +1,5 @@
 
-# Client Library
+# SwitchML Client Library
 
 The SwitchML client is a static library that bridges the gap between the end-hosts and the programmable switch through a simple to use API.
 

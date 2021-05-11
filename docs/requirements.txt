@@ -1,5 +1,5 @@
-sphinx>=2.0
-breathe>=4.13.0
-exhale
-myst-parser
-sphinx-rtd-theme
+sphinx==3.5.4
+breathe==4.29.1
+exhale==0.2.3
+myst-parser==0.13.7
+sphinx-rtd-theme==0.5.2

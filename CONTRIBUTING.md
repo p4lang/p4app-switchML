@@ -50,7 +50,7 @@ we feel that improves readability.
 ...
 
 
-## Client Library
+## SwitchML Client Library
 
 ### How the different classes interact
 
@@ -75,7 +75,7 @@ We have specific conventions for logging so make sure that you adhere to these c
 |:--:|--|
 | INFO | General information that the user might be interested in. Refer to the verbosity table for more details as we never use `LOG(INFO)` but instead `VLOG(verbosity)` for logging informational messages |
 | WARNING| Alert the user to a potential problem in his configuration or setup |
-| ERROR | Notify the user about a definite problem in their configuration or environment but SwitchML can remedy the error and continue on |.
+| ERROR | Notify the user about a definite problem in their configuration or environment but SwitchML can remedy the error and continue on |
 | FATAL | Notify the user about a serious unrecoverable problem that occurred after which the application will exit. We use both `LOG(FATAL)` and `CHECK(condition)` to signal problems of this magnitude |
 
 We include all logging statements with severity higher than INFO in both the debugging and release builds. For the informational messages, whether they are included or not depends on the verbosity as will be illustrated in what follows.
@@ -90,11 +90,11 @@ We include all logging statements with severity higher than INFO in both the deb
 For verbosity levels <= 1, you should use `VLOG` since initialization and cleanup will not affect performance during the lifetime of the application.
 On the other hand, for verbosity levels > 1, you should use `DVLOG` since we do not want these statements to be included except in a DEBUG build as they can affect performance significantly.
 
-## P4
+## SwitchML P4 Program
 
 ...
 
-## Controller
+## SwitchML Controller
 
 ...
 
