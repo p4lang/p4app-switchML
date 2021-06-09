@@ -27,9 +27,12 @@ class BypassPPP : public PrePostProcessor{
      * @brief Calls the super class constructor.
      * 
      * @param [in] config A reference to the context's configuration.
-     * @param [in] worker_thread_id The worker thread that this prepostprocessor belongs to.
+     * @param [in] worker_tid The worker thread that this prepostprocessor belongs to.
+     * @param [in] ltu_size The size in bytes of the logical transmission unit used by the backend.
+     * @param [in] batch_num_ltus How many LTUs constitute a batch.
      */
-    inline BypassPPP(Config& config, WorkerTid worker_thread_id) : PrePostProcessor(config, worker_thread_id) {};
+    inline BypassPPP(Config& config, WorkerTid worker_tid, Numel ltu_size, Numel batch_num_ltus) : 
+                     PrePostProcessor(config, worker_tid, ltu_size, batch_num_ltus) {}
 
     ~BypassPPP() = default;
 
@@ -40,14 +43,16 @@ class BypassPPP : public PrePostProcessor{
     BypassPPP& operator=(BypassPPP&&) = default;
 	
     /**
-     * @brief Do nothing
+     * @brief Compute the number of LTUs needed
      * 
-     * @param job_slice ignored
-     * @param total_main_num_packets ignored
-     * @param batch_num_pkts ignored
+     * @param [in] job_slice A pointer to the job slice currently being worked on by the worker thread.
+     * @return uint64_t the number of transmission units that prepostprocessor will need to be sent and received by the backend.
      */
-    inline void SetupJobSlice(__attribute__((unused)) JobSlice* job_slice, __attribute__((unused)) uint64_t total_main_num_packets,
-                              __attribute__((unused)) uint64_t batch_num_pkts) override {};
+    inline uint64_t SetupJobSlice(JobSlice* job_slice) override {
+        uint64_t tensor_size = job_slice->slice.numel * DataTypeSize(job_slice->slice.data_type);
+        uint64_t total_num_ltus = (tensor_size + this->ltu_size_ - 1) / this->ltu_size_; // Roundup division
+        return total_num_ltus;
+    }
 
     /**
      * @brief always return false
@@ -65,7 +70,7 @@ class BypassPPP : public PrePostProcessor{
      * @param exponent_ptr ignored
      */
     inline void PreprocessSingle(__attribute__((unused)) uint64_t pkt_id, __attribute__((unused)) void* entries_ptr,
-                                 __attribute__((unused)) void* exponent_ptr) override {};
+                                 __attribute__((unused)) void* exponent_ptr) override {}
 
     /**
      * @brief Do nothing
@@ -75,12 +80,12 @@ class BypassPPP : public PrePostProcessor{
      * @param exponent_ptr ignored
      */
     inline void PostprocessSingle(__attribute__((unused)) uint64_t pkt_id, __attribute__((unused)) void* entries_ptr,
-                                  __attribute__((unused)) void* exponent_ptr) override {};
+                                  __attribute__((unused)) void* exponent_ptr) override {}
 
     /**
      * @brief Do nothing
      */
-    inline void CleanupJobSlice() override {};
+    inline void CleanupJobSlice() override {}
 };
 
 } // namespace switchml

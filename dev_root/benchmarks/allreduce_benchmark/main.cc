@@ -356,7 +356,6 @@ int main(int argc, char* argv[]) {
             std::cout << "Data verified successfully." << std::endl;
         } else {
             std::cout << "Verification failed. There could be more errors but we do not print more than 10." << std::endl;
-            exit(EXIT_FAILURE);
         }
     }
     

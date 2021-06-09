@@ -64,5 +64,25 @@ class Barrier {
     bool flag_;
 };
 
+/**
+ * @brief A function to execute any command on the system and return the standard output as a string.
+ * 
+ * @param [in] cmd the command to execute.
+ * @return std::string a string that contains the standard output of the command.
+ */
+inline std::string Execute(const char* cmd) {
+    std::vector<char> buffer(128);
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        LOG(FATAL) << "popen() failed!";
+        exit(1);
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+
 } // namespace switchml
 #endif // SWITCHML_UTILS_H_

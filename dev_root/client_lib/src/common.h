@@ -16,7 +16,7 @@
 #include "glog_fix.h"
 
 namespace switchml {
-    
+
     // Lets give primitives names to make sure we use the same type for
     // The same logical use case.
 
@@ -27,7 +27,7 @@ namespace switchml {
     /** Type used to represent the number of elements in all tensors */
     typedef uint64_t Numel;
     /** The clock type used in all time measurements for switchml. **/
-    typedef std::chrono::system_clock clock;
+    typedef std::chrono::steady_clock clock;
 
     /**
      * @brief Numerical data type enum.

@@ -75,6 +75,24 @@ bool Config::LoadFromFile(std::string path) {
     config_file_options.add(dpdk_options);
 #endif
 
+#ifdef RDMA
+    po::options_description rdma_options("backend.rdma");
+    rdma_options.add_options()
+        ("backend.rdma.controller_ip", po::value<std::string>(&this->backend_.rdma.controller_ip_str)->default_value("127.0.0.1"))
+        ("backend.rdma.controller_port", po::value<uint16_t>(&this->backend_.rdma.controller_port)->default_value(50099))
+        ("backend.rdma.msg_numel", po::value<uint32_t>(&this->backend_.rdma.msg_numel)->default_value(1024))
+        ("backend.rdma.device_name", po::value<std::string>(&this->backend_.rdma.device_name)->default_value("mlx5_0"))
+        ("backend.rdma.device_port_id", po::value<uint16_t>(&this->backend_.rdma.device_port_id)->default_value(1))
+        ("backend.rdma.gid_index", po::value<uint16_t>(&this->backend_.rdma.gid_index)->default_value(3))
+        ("backend.rdma.use_gdr", po::value<bool>(&this->backend_.rdma.use_gdr)->default_value(true))
+#ifdef TIMEOUTS
+        ("backend.rdma.timeout", po::value<double>(&this->backend_.rdma.timeout)->default_value(10))
+        ("backend.rdma.timeout_threshold", po::value<uint64_t>(&this->backend_.rdma.timeout_threshold)->default_value(50000))
+#endif
+    ;
+    config_file_options.add(rdma_options);
+#endif
+
     // Open configuration file
     std::ifstream ifs;
     if(!path.empty()) {
@@ -186,6 +204,21 @@ void Config::PrintConfig() {
     ;
 #endif
 
+#ifdef RDMA
+    VLOG_IF(0, this->general_.backend == "rdma") << "\n[backend.rdma]"
+        << "\n    controller_ip_str = " << this->backend_.rdma.controller_ip_str
+        << "\n    controller_port = " << this->backend_.rdma.controller_port
+        << "\n    msg_numel = " << this->backend_.rdma.msg_numel
+        << "\n    device_name = " << this->backend_.rdma.device_name
+        << "\n    device_port_id = " << this->backend_.rdma.device_port_id
+        << "\n    gid_index = " << this->backend_.rdma.gid_index
+        << "\n    use_gdr = " << this->backend_.rdma.use_gdr
+#ifdef TIMEOUTS
+        << "\n    timeout = " << this->backend_.rdma.timeout
+        << "\n    timeout_threshold = " << this->backend_.rdma.timeout_threshold
+#endif
+    ;
+#endif
 }
 
 } // namespace switchml

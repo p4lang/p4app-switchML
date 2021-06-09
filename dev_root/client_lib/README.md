@@ -24,8 +24,6 @@ The DPDK backend uses the DPDK library to perform collective operations with the
 
 The RDMA Backend uses ibverbs directly to perform communication using RDMA as a transport and it usually outperforms DPDK on more than 10Gbps NICs because of the additional hardware offloads. However, you must have a NIC that supports RDMA.
 
-**The full RDMA implementation is a work in progress and will be released soon.**
-
 ## 2. Required Libraries
 
 Listed below are the system packages that are needed for the client library.
@@ -38,6 +36,7 @@ These are dependencies that are required regardless of the backend you choose.
 |--|--|
 | gcc | 7.5.0-3ubuntu1~18.04 |
 | make | 4.1-9.1ubuntu1 |
+| build-essential | |
 | libboost-program-options-dev | 1.65.1.0ubuntu1 |
 | libgoogle-glog-dev | 0.3.5-1 |
 
@@ -70,7 +69,15 @@ In addition to the above, you must compile the dpdk library by following the ins
 
 ### 1.3 RDMA Backend Dependencies
 
-Coming soon!
+These are dependencies that are required only for the RDMA backend.
+
+| Package (Debian/Ubuntu) | Tested Versions |
+|--|--|
+| autoconf | |
+| libtool | |
+| pkg-config | |
+| libibverbs-dev | 46mlnx1-1.46101 |
+| cmake | 3.17.0 |
 
 ## 2. Compiling the Library
 

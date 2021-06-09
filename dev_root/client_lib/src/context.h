@@ -179,9 +179,12 @@ class Context {
 
     // We want GetJobSlice, NotifyJobSliceCompletion, and get Backend to only be accessible to the worker thread and not the client.
     friend class DummyWorkerThread;
-  #ifdef DPDK
+#ifdef DPDK
     friend class DpdkWorkerThread;
-  #endif
+#endif
+#ifdef RDMA
+    friend class RdmaWorkerThread;
+#endif
 
     /** The scheduler that will be used to dispatch job slices to worker threads. */
     std::unique_ptr<Scheduler> scheduler_;

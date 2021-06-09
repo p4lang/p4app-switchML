@@ -47,7 +47,6 @@ DpdkWorkerThread::~DpdkWorkerThread(){
 void DpdkWorkerThread::operator()() {
     int ret;
 
-    this->ppp_ = PrePostProcessor::CreateInstance(this->config_, this->tid_);
     // Each worker thread has its own udp port
     this->worker_thread_e2e_addr_be_.port = rte_cpu_to_be_16(config_.backend_.dpdk.worker_port + this->tid_);
     this->lcore_id_ = rte_lcore_id();
@@ -62,6 +61,9 @@ void DpdkWorkerThread::operator()() {
 
     // The maximum number of outstanding packets for this worker.
     const uint64_t max_outstanding_pkts = genconf.max_outstanding_packets/genconf.num_worker_threads;
+
+    this->ppp_ = PrePostProcessor::CreateInstance(this->config_,
+                 this->tid_, genconf.packet_numel * DPDK_SWITCH_ELEMENT_SIZE, max_outstanding_pkts);
 
     // Explaining switch pool / slot:
     // The switch can be thought of as a pool of slots (array of slots). Slots holds/adds the contents of
@@ -160,15 +162,13 @@ void DpdkWorkerThread::operator()() {
             continue;
         }
 
-        // Compute number of packets needed
-        uint64_t total_num_pkts = (job_slice.slice.numel + genconf.packet_numel - 1) / genconf.packet_numel; // Roundup division
+        // Setup the prepostprocessor and get the number of main packets that we will need to send.
+        uint64_t total_num_pkts = this->ppp_->SetupJobSlice(&job_slice);
 
         // We can logically divide all of the packets that we will send into 'max_outstanding_pkts' sized groups
         // (Or less in case the total number of packets was less than max_outsanding_pkts).
         // We call each of these groups a batch. So if max_outstanding_pkts=10 and we wanted to send 70 packets then we have 7 batches.
         const uint64_t batch_num_pkts = std::min(max_outstanding_pkts, total_num_pkts);
-        
-        this->ppp_->SetupJobSlice(&job_slice, total_num_pkts, batch_num_pkts);
 
         if(this->ppp_->NeedsExtraBatch()) {
             total_num_pkts += batch_num_pkts;

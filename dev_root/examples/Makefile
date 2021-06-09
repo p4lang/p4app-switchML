@@ -48,6 +48,17 @@ endif
 LDFLAGS := -Wl,--whole-archive -ldpdk -Wl,--no-whole-archive $(LDFLAGS) 
 endif
 
+ifeq ($(RDMA), 1)
+GRPC = 1
+LDFLAGS += -libverbs -lhugetlbfs
+endif
+
+ifeq ($(GRPC),1)
+GRPC_HOME ?= ../third_party/grpc/build
+export PKG_CONFIG_PATH = $(GRPC_HOME)/lib/pkgconfig/
+LDFLAGS += `pkg-config --libs protobuf grpc++`
+endif
+
 INC += -I$(INCDIR)
 
 .phony: default

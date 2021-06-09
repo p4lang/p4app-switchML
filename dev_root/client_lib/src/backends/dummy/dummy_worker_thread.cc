@@ -21,14 +21,14 @@ namespace switchml {
 WorkerTid DummyWorkerThread::next_tid_ = 0;
 
 DummyWorkerThread::DummyWorkerThread(Context& context, DummyBackend& backend, Config& config) :
-tid_(DummyWorkerThread::next_tid_++),
-context_(context),
-backend_(backend),
-config_(config),
-thread_(nullptr),
-ppp_()
+    tid_(DummyWorkerThread::next_tid_++),
+    context_(context),
+    backend_(backend),
+    config_(config),
+    thread_(nullptr),
+    ppp_()
 {
-    this->ppp_ = PrePostProcessor::CreateInstance(config, this->tid_);
+    // Do nothing
 }
 
 DummyWorkerThread::~DummyWorkerThread(){
@@ -43,10 +43,12 @@ void DummyWorkerThread::operator()() {
     const GeneralConfig& genconf = this->config_.general_;
     // The maximum number of outstanding packets for this worker.
     const uint64_t max_outstanding_pkts = genconf.max_outstanding_packets/genconf.num_worker_threads;
+    this->ppp_ = PrePostProcessor::CreateInstance(this->config_, this->tid_, genconf.packet_numel*DUMMY_ELEMENT_SIZE, max_outstanding_pkts);
+    
     backend.SetupWorkerThread(this->tid_);
 
     // Buffers to hold the data that's supposed to be outstanding.
-    void* outstanding_entries = malloc(max_outstanding_pkts*genconf.packet_numel*4); // Size of entry assumed to be 4 bytes at most
+    void* outstanding_entries = malloc(max_outstanding_pkts*genconf.packet_numel*DUMMY_ELEMENT_SIZE);
     void* outstanding_extra_info = malloc(max_outstanding_pkts*2); // 2 bytes extra info for each packet
 
     // The job slice struct that will be filled with the next job slice to work on.
@@ -60,7 +62,7 @@ void DummyWorkerThread::operator()() {
         }
         DVLOG(2) << "Worker thread '" << this->tid_ << "' received job slice with job id: " << job_slice.job->id_ << " with numel: " << job_slice.slice.numel << ".";
 
-        if(this->config_.general_.instant_job_completion) {
+        if(job_slice.slice.numel <=0 || this->config_.general_.instant_job_completion) {
             if(ctx.GetContextState() == Context::ContextState::RUNNING) {
                 DVLOG(2) << "Worker thread '" << this->tid_ << "' notifying job slice completion with job id: " << job_slice.job->id_  << ".";
                 ctx.NotifyJobSliceCompletion(this->tid_, job_slice);
@@ -68,15 +70,13 @@ void DummyWorkerThread::operator()() {
             continue;
         }
 
-        // Compute number of packets needed
-        uint64_t total_num_pkts = (job_slice.slice.numel + genconf.packet_numel - 1) / genconf.packet_numel; // Roundup division
+        // Setup the prepostprocessor and get the number of main packets that we will need to send.
+        uint64_t total_num_pkts = this->ppp_->SetupJobSlice(&job_slice);
 
         // We can logically divide all of the packets that we will send into 'max_outstanding_pkts' sized groups
         // (Or less in case the total number of packets was less than max_outsanding_pkts).
         // We call each of these groups a batch. So if max_outstanding_pkts=10 and we wanted to send 70 packets then we have 7 batches.
         uint64_t batch_num_pkts = std::min(max_outstanding_pkts, total_num_pkts);
-
-        this->ppp_->SetupJobSlice(&job_slice, total_num_pkts, batch_num_pkts);
 
         if(this->ppp_->NeedsExtraBatch()) {
             total_num_pkts += batch_num_pkts;
@@ -99,7 +99,7 @@ void DummyWorkerThread::operator()() {
             first_batch_pkts.push_back(pkt);
         }
 
-        // Send first burst
+        // Send first batch
         DVLOG(3) << "Worker thread '" << this->tid_ << "' will send the first '" << first_batch_pkts.size() << "' packets";
         backend.SendBurst(this->tid_, first_batch_pkts);
         ctx.GetStats().AddTotalPktsSent(this->tid_, first_batch_pkts.size());

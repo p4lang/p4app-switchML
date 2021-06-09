@@ -7,15 +7,21 @@
 #ifndef SWITCHML_DUMMY_BACKEND_H_
 #define SWITCHML_DUMMY_BACKEND_H_
 
+#ifndef DUMMY
+#define DUMMY // Just so that IDEs activate the dummy sections of the code
+#endif
+
 #include <thread>
 #include <vector>
 
 #include "common.h"
 #include "backend.h"
 
+#define DUMMY_ELEMENT_SIZE 4
+
 namespace switchml {
 
-// Forward declare DummyWorkerThread so we add it as a member variable
+// Forward declare DummyWorkerThread so we can add it as a member variable
 class DummyWorkerThread;
 
 /**

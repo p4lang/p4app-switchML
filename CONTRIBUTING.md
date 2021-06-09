@@ -2,7 +2,8 @@
 The SwitchML project welcomes all contributions. But before trying to contribute please read through the following guidelines specifically the ones concerning the part that you would like to tackle. It will make you understand the design, style, and conventions used faster and get you up to speed on what you should adhere to and what you should be aware of when contributing. 
 
 After doing that, please open up an issue on Github whether you wanted to fix a bug, implement a new feature...etc describing exactly what you plan to do. This will allow the team to give you feedback and discuss the various dimensions of the contribution. It will also make it all the more likely for your contribution to be pulled into the main repo.
-## Table of contents
+
+**Table of contents**
 
 - [General Guidelines](#general-guidelines)
 	- [Coding Style Conventions](#coding-style-conventions)

@@ -7,6 +7,8 @@
 #ifndef SWITCHML_DUMMY_WORKER_THREAD_H_
 #define SWITCHML_DUMMY_WORKER_THREAD_H_
 
+#include <thread>
+
 #include "common.h"
 #include "config.h"
 #include "dummy_backend.h"
@@ -16,6 +18,8 @@ namespace switchml {
 
 /**
  * @brief A class that represents a single dummy worker thread.
+ * 
+ * A worker thread constantly asks the context for work and carries it out.
  * 
  * Multiple instances of this class is typically created depending on
  * the number of cores in the configuration.

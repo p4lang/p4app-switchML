@@ -6,6 +6,12 @@ BUILDDIR ?= ../../build
 
 LIBS = switchml-client pthread glog boost_program_options
 
+ifeq ($(RDMA),1)
+ifeq ($(DPDK),1)
+$(error Enabling both DPDK and RDMA backends is not supported.)
+endif
+endif
+
 ifeq ($(DPDK), 1)
 $(info DPDK is set.)
 LIBS += dl numa
@@ -20,6 +26,11 @@ endif
 endif
 # Dpdk must be included as a whole archive for it to work properly.
 LIBS := -Wl,--whole-archive dpdk -Wl,--no-whole-archive $(LIBS) 
+endif
+
+ifeq ($(RDMA), 1)
+# TODO:
+$(error The RDMA backend is not supported fpr the pytorch patch yet.)
 endif
 
 $(BUILDDIR)/switchml_pytorch.patch: $(BUILDDIR)

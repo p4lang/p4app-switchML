@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package SwitchML;
+
+service RDMAServer {
+  rpc RDMAConnect (RDMAConnectRequest) returns (RDMAConnectResponse) {}
+}
+
+service Synch {
+  rpc Barrier(BarrierRequest) returns (BarrierResponse) {}
+  rpc Bcast(BcastRequest) returns (BcastResponse) {}
+}
+
+message RDMAConnectRequest {
+  uint64 job_id = 1;
+  int32 my_rank = 2;
+  int32 job_size = 3;
+  uint64 mac = 4;
+  uint32 ipv4 = 5;
+  uint32 rkey = 6;
+  enum PacketSize {
+    IBV_MTU_128  = 0;
+    IBV_MTU_256  = 1;
+    IBV_MTU_512  = 2;
+    IBV_MTU_1024 = 3;
+  }
+  PacketSize packet_size = 7;
+  uint32 message_size = 8;
+  repeated uint32 qpns = 9;
+  repeated uint32 psns = 10;
+}
+
+message RDMAConnectResponse {
+  uint64 job_id = 1;
+  repeated uint64 macs = 2;
+  repeated uint32 ipv4s = 3;
+  repeated uint32 rkeys = 4;
+  repeated uint32 qpns = 5;
+  repeated uint32 psns = 6;
+}
+
+message BarrierRequest {
+  int32 job_size = 1;
+}
+
+message BarrierResponse {
+}
+
+message BcastRequest {
+  uint64 value = 1;
+  int32 my_rank = 2;
+  int32 job_size = 3;
+  int32 root_rank = 4;
+}
+
+message BcastResponse {
+  uint64 value = 1;
+}

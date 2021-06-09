@@ -27,10 +27,10 @@ uint16_t PktId2PoolIndex(uint64_t pkt_id, uint32_t switch_pool_index_start,
                          uint32_t switch_pool_index_shift, uint32_t max_outstanding_pkts) {
     uint32_t i = (pkt_id + switch_pool_index_shift) % (2 * max_outstanding_pkts);
     if (i < max_outstanding_pkts) {
-        // Set MSB to 0 (We use the 1st set of switch pools/slots)
+        // Set MSB to 0 (We use the 1st switch pool)
         return (switch_pool_index_start + i);
     } else {
-        // Set MSB to 1 (We use the 2nd set of switch pools/slots)
+        // Set MSB to 1 (We use the 2nd switch pool)
         return ((switch_pool_index_start + (i - max_outstanding_pkts)) | 0x8000);
     }
 }

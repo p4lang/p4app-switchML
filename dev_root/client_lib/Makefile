@@ -53,6 +53,19 @@ endif
 endif
 endif
 
+ifeq ($(RDMA),1)
+ifeq ($(DPDK),1)
+$(error Enabling both DPDK and RDMA backends is not supported.)
+endif
+endif
+
+ifneq ($(DUMMY),0)
+$(info DUMMY set. Compiling the dummy backend..)
+CXXFLAGS += -DDUMMY
+SRCDIRS_ += $(SRCDIR_)/backends/dummy
+CFGFILES += $(SRCDIR_)/configs/dummy.cfg
+endif
+
 ifeq ($(DPDK),1)
 
 $(info DPDK set. Compiling the dpdk backend..)
@@ -69,17 +82,18 @@ endif
 endif
 
 ifeq ($(RDMA),1)
-$(error RDMA set (Not implemented yet))
+$(info RDMA set. Compiling the rdma backend..)
+GRPC = 1
 CXXFLAGS += -DRDMA
 SRCDIRS_ += $(SRCDIR_)/backends/rdma
 CFGFILES += $(SRCDIR_)/configs/rdma.cfg
+
+ifneq ($(TIMEOUTS),0)
+$(info TIMEOUTS set. Compiling with retransmissions)
+CXXFLAGS += -DTIMEOUTS
+CFGFILES += $(SRCDIR_)/configs/rdma_timeouts.cfg
 endif
 
-ifneq ($(DUMMY),0)
-$(info DUMMY set. Compiling the dummy backend..)
-CXXFLAGS += -DDUMMY
-SRCDIRS_ += $(SRCDIR_)/backends/dummy
-CFGFILES += $(SRCDIR_)/configs/dummy.cfg
 endif
 
 ifneq ($(VCL), 0)
@@ -90,12 +104,26 @@ $(warning VCL may cause problems if it was compiled with the DEBUG flag and with
 endif
 endif
 
+# GRPC/Protobuf variables
+ifeq ($(GRPC),1)
+PROTOSDIR ?= ../protos
+GRPC_HOME ?= ../third_party/grpc/build
+PROTOC ?= $(GRPC_HOME)/bin/protoc
+GRPC_CPP_PLUGIN ?= $(GRPC_HOME)/bin/grpc_cpp_plugin
+
+PBUFH := ./src/switchml.pb.h ./src/switchml.grpc.pb.h
+PBUFC := ./src/switchml.pb.cc ./src/switchml.grpc.pb.cc
+PBUF := $(PBUFH) $(PBUFC)
+CXXFLAGS +=  -I $(GRPC_HOME)/include
+# They might not be generated so we should add them explicitly just in case
+SRCS-absolute_ += $(SRCDIR_)/switchml.pb.cc $(SRCDIR_)/switchml.grpc.pb.cc
+endif
 
 OBJDIRS_ := $(SRCDIRS_:$(SRCDIR_)%=$(OBJDIR_)%)
 CXXFLAGS += $(shell printf '-I %s ' $(SRCDIRS_)) # add includes
 
 # Source files
-SRCS-absolute_ := $(shell find $(SRCDIRS_) -maxdepth 1 -name "*.cc" )
+SRCS-absolute_ += $(shell find $(SRCDIRS_) -maxdepth 1 -name "*.cc" )
 SRCS_ := $(shell realpath --relative-to="$(SRCDIR_)" $(SRCS-absolute_))
 SRCS-y := $(SRCS-absolute_) # Name constraint from DPDK
 
@@ -104,7 +132,7 @@ HDRS-absolute_ := $(shell find $(SRCDIRS_) -maxdepth 1 -name "*.h" )
 HDRS_ := $(shell realpath --relative-to="$(SRCDIR_)" $(HDRS-absolute_))
 
 # Object files
-OBJS_ := $(SRCS_:%.cc=$(OBJDIR_)/%.o)
+OBJS_ += $(SRCS_:%.cc=$(OBJDIR_)/%.o)
 
 # Version info
 # This information is to be included in the compiled library
@@ -136,7 +164,7 @@ endif
 # Copy headers
 	cd $(SRCDIR_) && cp --parents $(HDRS_) $(INCDIR_)
 
-$(LIBDIR_)/$(LIB): $(OBJS_) $(LIBDIR_)
+$(LIBDIR_)/$(LIB): protos $(OBJS_) $(LIBDIR_) 
 	$(AR) rcs $(LIBDIR_)/$(LIB) $(OBJS_)
 
 $(OBJDIR_)/%.o: $(SRCDIR_)/%.cc $(OBJDIRS_)
@@ -145,6 +173,15 @@ $(OBJDIR_)/%.o: $(SRCDIR_)/%.cc $(OBJDIRS_)
 .PHONY: config_
 config_:
 	cat $(CFGFILES) > $(BUILDDIR)/switchml.cfg
+
+.PHONY: protos
+protos: $(PBUF)
+
+src/%.grpc.pb.cc src/%.grpc.pb.h:
+	LD_LIBRARY_PATH=$(GRPC_HOME)/lib $(PROTOC) -I $(PROTOSDIR) --grpc_out=src --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN) $(PROTOSDIR)/switchml.proto
+
+src/%.pb.cc src/%.pb.h:
+	LD_LIBRARY_PATH=$(GRPC_HOME)/lib $(PROTOC) -I $(PROTOSDIR) --cpp_out=src $(PROTOSDIR)/switchml.proto
 
 $(OBJDIRS_):
 	mkdir -p $@
@@ -161,8 +198,9 @@ else
 # DPDK has its own clean target that we use 
 .phony: clean
 clean:
-	rm -r -f $(OBJDIR_) 
-	rm -r -f $(INCDIR_)
+	$(RM) -r $(OBJDIR_) 
+	$(RM) -r $(INCDIR_)
 # LIBDIR_ is used by other makefiles. Only remove what we produced
-	rm -f $(LIBDIR_)/$(LIB)s
+	$(RM) $(LIBDIR_)/$(LIB)s
+	$(RM) $(PBUF)
 endif

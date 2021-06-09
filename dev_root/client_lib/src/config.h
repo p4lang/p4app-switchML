@@ -191,7 +191,71 @@ struct DpdkBackendConfig {
  * @brief Configuration options specific to using the RDMA backend.
  */
 struct RdmaBackendConfig {
+    /**
+     * The IP address of the machine that's running the controller program.
+     * Note: This is not the same as the ip address that is passed to the switch_ip
+     * argument when starting the controller.
+     */
+    std::string controller_ip_str;
 
+    /**
+     * The port that the controller program is using. This is the value that you 
+     * passed to the port argument when starting the controller.
+     */
+    uint16_t controller_port;
+
+    /**
+     * RDMA sends messages then the NIC splits a message into multiple packets.
+     * Thus the number of elements in a message must be a multiple of a packet's number of elements.
+     * This reduced the overheads involved in sending packet by packet. However,
+     * it also makes losses more costly for UC transport since the loss of a single packet will
+     * make us retransmit the whole message. Hence you should tweak this value until you find the sweet spot.
+     */
+    uint32_t msg_numel;
+
+    /**
+     * The name of the Infiniband device to use. It will be something like `mlx5_0`.
+     * You can run the `ibv_devices` command to list your available devices.
+     */
+    std::string device_name;
+
+    /**
+     * Each Infiniband device can have multiple ports.
+     * This value lets you choose a specific port. 
+     * Use the `ibv_devinfo` command to list all ports in each device and see their id/index.
+     * Its the first number in the description of a port "port:   1" means you should use 1 
+     * for this variable.
+     */
+    uint16_t device_port_id;
+
+    /**
+     * Choose from the following:
+     * 0: RoCEv1 with MAC-based GID, 1:RoCEv2 with MAC-based GID,
+     * 2: RoCEv1 with IP-based GID, 3: RoCEv2 with IP-based GID
+     */
+    uint16_t gid_index;
+
+    /**
+     * (Not implemented yet)
+     * Whether to try to use GPU Direct or not.
+     * In case the submitted job's data resides on the GPU, then using GPU Direct allows us to have our registerd buffer
+     * be also in GPU memory and directly send data from the GPU instead of having to copy it to a registered CPU buffer.
+     */
+    bool use_gdr;
+
+#ifdef TIMEOUTS
+    /**
+     * How much time in ms should we wait before we consider that a packet is lost.
+     * 
+     * Each worker thread creates a copy of this value at the start of working on a job slice.
+     * From that point the timeout value can be increased if the number of timeouts exceeds a threshold
+     * as a backoff mechanism.
+     */
+    double timeout;
+
+    /** How many timeouts should occur before we double the timeout time? */
+    uint64_t timeout_threshold;
+#endif
 };
 #endif
 

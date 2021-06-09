@@ -19,6 +19,8 @@
 #include "context.h"
 #include "backend.h"
 
+#define DPDK_SWITCH_ELEMENT_SIZE 4
+
 namespace switchml {
 
 // Forward declare thread classes to be able to add them as member variables

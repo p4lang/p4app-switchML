@@ -18,6 +18,12 @@ LDFLAGS += -L$(SWITCHML_HOME)/lib -L$(CUDA_HOME)/lib -L$(NCCL_HOME)/lib
 LDFLAGS += -lswitchml-client -lglog -lstdc++ -lboost_program_options -lpthread
 INC += -I$(CUDA_HOME)/include -I$(NCCL_HOME)/include -I$(SWITCHML_HOME)/include
 
+ifeq ($(RDMA),1)
+ifeq ($(DPDK),1)
+$(error Enabling both DPDK and RDMA backends is not supported.)
+endif
+endif
+
 ifeq ($(DPDK), 1)
 $(info DPDK is set.)
 LDFLAGS += -L../../third_party/dpdk/build/lib -ldl -lnuma
@@ -41,6 +47,11 @@ $(info "Compiling with DEBUG")
 CXXFLAGS += -DDEBUG -DENABLE_TRACE -O0 -g -Wall -Wextra
 else
 CXXFLAGS += -DNDEBUG -O3
+endif
+
+ifeq ($(RDMA), 1)
+# TODO:
+$(error The RDMA backend is not supported for the nccl plugin yet.)
 endif
 
 # Targets

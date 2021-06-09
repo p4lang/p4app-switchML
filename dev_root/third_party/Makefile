@@ -11,6 +11,11 @@
 # - MLX4: Configure DPDK for Mellanox ConnectX-3. 
 #
 
+# The path to the directory containing this makefile
+MKDIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST)))).
+
+CMAKE ?= cmake
+
 ifeq ($(DEBUG),1)
 $(info Compiling third_party with DEBUG)
 CXXFLAGS += -DDEBUG -O0 -g
@@ -18,14 +23,17 @@ else
 CXXFLAGS += -O3
 endif
 
-MLX ?= 5
+DEPS = vcl
+
+ifeq ($(DPDK),1)
+DEPS += dpdk
+endif
+ifeq ($(rdma),1)
+DEPS += grpc
+endif
 
 .PHONY: default
-ifeq ($(DPDK),1)
-default: dpdk
-else
-default:
-endif
+default: $(DEPS)
 
 .PHONY: dpdk
 dpdk:
@@ -46,6 +54,14 @@ endif
 .PHONY: vcl
 vcl:
 	# nothing to do for vcl
+
+.PHONY: grpc
+grpc:
+	mkdir -p grpc/cmake/build
+	cd grpc/cmake/build && \
+	$(CMAKE) -DCMAKE_INSTALL_PREFIX=$(MKDIR)/grpc/build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DgRPC_INSTALL=ON -DgRPC_BUILD_TESTS=OFF -DgRPC_SSL_PROVIDER=package ../.. && \
+	make -j && \
+	make install
 
 .PHONY: clean
 clean:
