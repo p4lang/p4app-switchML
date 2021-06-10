@@ -145,21 +145,60 @@ bool Config::LoadFromFile(std::string path) {
 }
 
 void Config::Validate() {
-    // TODO: Add more checks. Maybe each backend should validate its own configuration as well.
+    // TODO: Add more checks. Maybe each backend should validate its own configuration instead of doing it here?.
     LOG_IF(FATAL, this->general_.max_outstanding_packets / this->general_.num_worker_threads == 0) 
         << "The chosen max_outstanding_packets must be at least equal to num_worker_threads to let each worker thread send at least 1 packet";
 
-    LOG_IF(WARNING, this->general_.max_outstanding_packets % this->general_.num_worker_threads != 0)
-        << "The chosen max_outstanding_packets is not divisible by num_worker_threads. It will be rounded down to the nearest divisible value. Bandwidth may be underutilized";
-
-    if(this->general_.backend == "dpdk") {
-        LOG_IF(FATAL, this->general_.packet_numel != 256 && this->general_.packet_numel != 64) << "The DPDK backend only supports 256 or 64 elements per packet. '" << this->general_.packet_numel << "' is not valid.";
+    uint64_t outstanding_pkts_per_wt = this->general_.max_outstanding_packets / this->general_.num_worker_threads;
+    uint64_t valid_mop = outstanding_pkts_per_wt*this->general_.num_worker_threads;
+    if (valid_mop != this->general_.max_outstanding_packets) {
+        LOG(WARNING) << "general.max_outstanding_packets '" << this->general_.max_outstanding_packets << "' is not divisible by general.num_worker_threads '"
+            << this->general_.num_worker_threads << ".\n"
+            << "Setting it to '" << valid_mop << "'."
+        ;
+        this->general_.max_outstanding_packets = valid_mop;
     }
+
+#ifdef DPDK
+    if(this->general_.backend == "dpdk") {
+        LOG_IF(FATAL, this->general_.packet_numel != 256 && this->general_.packet_numel != 64) 
+            << "The DPDK backend only supports 256 or 64 elements per packet. '" << this->general_.packet_numel << "' is not valid.";
+    }
+#endif
+#ifdef RDMA
+    if(this->general_.backend == "rdma") {
+        LOG_IF(FATAL, this->general_.packet_numel != 256 && this->general_.packet_numel != 64) 
+            << "The RDMA backend only supports 256 or 64 elements per packet. '" << this->general_.packet_numel << "' is not valid.";
+        
+        LOG_IF(FATAL, this->backend_.rdma.msg_numel < this->general_.packet_numel) << "rdma.msg_numel cannot be less than general.packet_numel.";
+
+        uint64_t num_pkts_per_msg = this->backend_.rdma.msg_numel/this->general_.packet_numel;
+        if (this->backend_.rdma.msg_numel % this->general_.packet_numel != 0) {
+            uint64_t new_msg_numel = num_pkts_per_msg * this->general_.packet_numel;
+            LOG(WARNING) << "rdma.msg_numel '" << this->backend_.rdma.msg_numel << "' is not divisible by general.packet_numel '"
+                << this->general_.packet_numel << "'. We will set rdma.msg_numel to '" << new_msg_numel << "'.";
+            this->backend_.rdma.msg_numel = new_msg_numel;
+        }
+        uint64_t outstanding_msgs = this->general_.max_outstanding_packets / num_pkts_per_msg;
+        uint64_t outstanding_msgs_per_wt = outstanding_msgs / this->general_.num_worker_threads;
+        valid_mop = outstanding_msgs_per_wt * this->general_.num_worker_threads * num_pkts_per_msg;
+        if(valid_mop != this->general_.max_outstanding_packets) {
+            LOG(WARNING) << "general.max_outstanding_packets '" << this->general_.max_outstanding_packets << "' is not divisible by '" 
+                << this->general_.num_worker_threads * num_pkts_per_msg 
+                << "' (number of packets per message * number of worker threads).\n"
+                << ". We will set general.max_outstanding_packets to '" << valid_mop << "' to have exactly " << outstanding_msgs_per_wt 
+                << " outstanding messages per worker thread."
+            ;
+            this->general_.max_outstanding_packets = valid_mop;
+        }
+    }
+#endif
 }
 
 void Config::PrintConfig() {
     VLOG(0) << "Printing configuration";
 
+    uint64_t outstanding_pkts_per_wt = this->general_.max_outstanding_packets / this->general_.num_worker_threads;
     VLOG(0) << "\n[general]"
         << "\n    rank = " << this->general_.rank
         << "\n    num_workers = " << this->general_.num_workers
@@ -170,6 +209,8 @@ void Config::PrintConfig() {
         << "\n    scheduler = " << this->general_.scheduler
         << "\n    prepostprocessor = " << this->general_.prepostprocessor
         << "\n    instant_job_completion = " << this->general_.instant_job_completion
+        << "\n    --(derived)--"
+        << "\n    max_outstanding_packets_per_worker_thread = " <<  outstanding_pkts_per_wt
     ;
 
 #ifdef DUMMY
@@ -180,44 +221,54 @@ void Config::PrintConfig() {
 #endif
 
 #ifdef DPDK
-    VLOG_IF(0, this->general_.backend == "dpdk") << "[backend.dpdk]"
-        << "\n    worker_port = " << this->backend_.dpdk.worker_port
-        << "\n    worker_ip = " << this->backend_.dpdk.worker_ip_str
-        << "\n    switch_port = " << this->backend_.dpdk.switch_port
-        << "\n    switch_ip = " << this->backend_.dpdk.switch_ip_str
-        << "\n    switch_mac = " << this->backend_.dpdk.switch_mac_str
+    if(this->general_.backend == "dpdk") {
+        VLOG(0) << "\n[backend.dpdk]"
+            << "\n    worker_port = " << this->backend_.dpdk.worker_port
+            << "\n    worker_ip = " << this->backend_.dpdk.worker_ip_str
+            << "\n    switch_port = " << this->backend_.dpdk.switch_port
+            << "\n    switch_ip = " << this->backend_.dpdk.switch_ip_str
+            << "\n    switch_mac = " << this->backend_.dpdk.switch_mac_str
 
-        << "\n    cores = " << this->backend_.dpdk.cores_str
-        << "\n    extra_eal_options = " << this->backend_.dpdk.extra_eal_options
-        << "\n    port_id = " << this->backend_.dpdk.port_id
-        << "\n    pool_size = " << this->backend_.dpdk.pool_size
-        << "\n    pool_cache_size = " << this->backend_.dpdk.pool_cache_size
-        << "\n    burst_rx = " << this->backend_.dpdk.burst_rx
-        << "\n    burst_tx = " << this->backend_.dpdk.burst_tx
-        << "\n    bulk_drain_tx_us = " << this->backend_.dpdk.port_id
-
+            << "\n    cores = " << this->backend_.dpdk.cores_str
+            << "\n    extra_eal_options = " << this->backend_.dpdk.extra_eal_options
+            << "\n    port_id = " << this->backend_.dpdk.port_id
+            << "\n    pool_size = " << this->backend_.dpdk.pool_size
+            << "\n    pool_cache_size = " << this->backend_.dpdk.pool_cache_size
+            << "\n    burst_rx = " << this->backend_.dpdk.burst_rx
+            << "\n    burst_tx = " << this->backend_.dpdk.burst_tx
+            << "\n    bulk_drain_tx_us = " << this->backend_.dpdk.port_id
 #ifdef TIMEOUTS
-        << "\n    timeout = " << this->backend_.dpdk.timeout
-        << "\n    timeout_threshold = " << this->backend_.dpdk.timeout_threshold
-        << "\n    timeout_threshold_increment = " << this->backend_.dpdk.timeout_threshold_increment
+            << "\n    timeout = " << this->backend_.dpdk.timeout
+            << "\n    timeout_threshold = " << this->backend_.dpdk.timeout_threshold
+            << "\n    timeout_threshold_increment = " << this->backend_.dpdk.timeout_threshold_increment
 #endif
-    ;
+        ;
+    }
 #endif
 
 #ifdef RDMA
-    VLOG_IF(0, this->general_.backend == "rdma") << "\n[backend.rdma]"
-        << "\n    controller_ip_str = " << this->backend_.rdma.controller_ip_str
-        << "\n    controller_port = " << this->backend_.rdma.controller_port
-        << "\n    msg_numel = " << this->backend_.rdma.msg_numel
-        << "\n    device_name = " << this->backend_.rdma.device_name
-        << "\n    device_port_id = " << this->backend_.rdma.device_port_id
-        << "\n    gid_index = " << this->backend_.rdma.gid_index
-        << "\n    use_gdr = " << this->backend_.rdma.use_gdr
+    if(this->general_.backend == "rdma") {
+        uint64_t num_pkts_per_msg = this->backend_.rdma.msg_numel/this->general_.packet_numel;
+        uint64_t outstanding_msgs = this->general_.max_outstanding_packets / num_pkts_per_msg;
+        uint64_t outstanding_msgs_per_wt = outstanding_msgs / this->general_.num_worker_threads;
+        VLOG(0) << "\n[backend.rdma]"
+            << "\n    controller_ip_str = " << this->backend_.rdma.controller_ip_str
+            << "\n    controller_port = " << this->backend_.rdma.controller_port
+            << "\n    msg_numel = " << this->backend_.rdma.msg_numel
+            << "\n    device_name = " << this->backend_.rdma.device_name
+            << "\n    device_port_id = " << this->backend_.rdma.device_port_id
+            << "\n    gid_index = " << this->backend_.rdma.gid_index
+            << "\n    use_gdr = " << this->backend_.rdma.use_gdr
 #ifdef TIMEOUTS
-        << "\n    timeout = " << this->backend_.rdma.timeout
-        << "\n    timeout_threshold = " << this->backend_.rdma.timeout_threshold
+            << "\n    timeout = " << this->backend_.rdma.timeout
+            << "\n    timeout_threshold = " << this->backend_.rdma.timeout_threshold
 #endif
-    ;
+            << "\n    --(derived)--"
+            << "\n    num_pkts_per_msg = " <<  num_pkts_per_msg
+            << "\n    max_outstanding_msgs = " << outstanding_msgs
+            << "\n    max_outstanding_msgs_per_worker_thread = " << outstanding_msgs_per_wt
+        ;
+    }
 #endif
 }
 

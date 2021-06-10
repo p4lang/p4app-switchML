@@ -28,7 +28,7 @@ DEPS = vcl
 ifeq ($(DPDK),1)
 DEPS += dpdk
 endif
-ifeq ($(rdma),1)
+ifeq ($(RDMA),1)
 DEPS += grpc
 endif
 
@@ -65,4 +65,7 @@ grpc:
 
 .PHONY: clean
 clean:
+	cd dpdk && git clean -fx
 	$(RM) -r dpdk/build
+	cd grpc && git clean -fx
+	$(RM) -r grpc/build grpc/cmake/build

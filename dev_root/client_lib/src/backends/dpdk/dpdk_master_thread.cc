@@ -72,6 +72,9 @@ void DpdkMasterThread::operator()() {
         num_cores++;
     }
 
+    // Make sure the number of cores specified in the dpdk config matches the number of worker threads specified in the general config.
+    CHECK_EQ(FATAL, num_cores, this->config_.general_.num_worker_threads);
+
     // Initialize the port
     uint16_t port_id = this->config_.backend_.dpdk.port_id;
     InitPort(this->config_.backend_.dpdk, num_cores);
