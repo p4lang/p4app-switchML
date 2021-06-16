@@ -33,11 +33,8 @@ control UDPReceiver(
         MulticastGroupId_t mgid,
         worker_type_t worker_type,
         worker_id_t worker_id,
-        packet_type_t packet_type,
         num_workers_t num_workers,
-        worker_bitmap_t worker_bitmap,
-        pool_index_t pool_base,
-        worker_pool_index_t pool_size_minus_1) {
+        worker_bitmap_t worker_bitmap) {
 
         // Count received packet
         receive_counter.count();
@@ -86,8 +83,6 @@ control UDPReceiver(
             hdr.ipv4.src_addr         : ternary;
             hdr.ipv4.dst_addr         : ternary;
             hdr.udp.dst_port          : ternary;
-            hdr.ib_bth.partition_key  : ternary;
-            hdr.ib_bth.dst_qp         : ternary;
             ig_prsr_md.parser_err     : ternary;
         }
 

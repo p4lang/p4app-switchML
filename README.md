@@ -11,7 +11,7 @@ This is a preliminary code release and we are working to complete both code and 
 To run SwitchML you need to:
 - compile the P4 program and deploy it on the switch (see the [P4 code documentation](/dev_root/p4))
 - run the Python controller (see the [controller documentation](/dev_root/controller))
-- compile and run the end-host program using the end-host library (see the [library documentation](/dev_root/client_lib)
+- compile and run the end-host program using the end-host library (see the [library documentation](/dev_root/client_lib))
 
 The [examples](/dev_root/examples) folder provides simple programs that show how to use the APIs.
 
@@ -31,7 +31,7 @@ dev_root:
 ```
 
 ## Testing
-The [benchmarks](/dev_root/benchmarks) contain a benchmarks program that we used to measure SwitchML performances. 
+The [benchmarks](/dev_root/benchmarks) contain a benchmarks program that we used to measure SwitchML performances.
 In our experiments (see benchmark documentation for details) we observed a more than 2x speedup over NCCL when using RDMA. Moreover, differently from ring all-reduce, with SwitchML performance are constant with any number of workers.
 
 ![Benchmarks](/docs/img/benchmark.png)
