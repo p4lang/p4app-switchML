@@ -9,7 +9,6 @@
 
 #include <infiniband/verbs.h>
 
-#include <mutex>
 #include <vector>
 
 #include "common.h"
@@ -72,7 +71,7 @@ class RdmaConnection {
     void Connect();
 
     // Getters
-    ibv_cq* GetWorkerCompletionQueue(WorkerTid worker_thread_id);
+    ibv_cq* GetWorkerThreadCompletionQueue(WorkerTid worker_thread_id);
 
     /**
      * @brief Get the range of queue pairs corresponding to a worker thread.
@@ -80,7 +79,7 @@ class RdmaConnection {
      * @param [in] worker_thread_id
      * @return std::vector<ibv_qp*> 
      */
-    std::vector<ibv_qp*> GetWorkerQueuePairs(WorkerTid worker_thread_id);
+    std::vector<ibv_qp*> GetWorkerThreadQueuePairs(WorkerTid worker_thread_id);
 
     /**
      * @brief Get the range of rkeys corresponding to a worker thread.
@@ -88,7 +87,7 @@ class RdmaConnection {
      * @param worker_thread_id 
      * @return std::vector<uint32_t> 
      */
-    std::vector<uint32_t> GetWorkerRkeys(WorkerTid worker_thread_id);
+    std::vector<uint32_t> GetWorkerThreadRkeys(WorkerTid worker_thread_id);
 
     /**
      * @brief Get the memory region information corresponding to a worker thread.
@@ -98,7 +97,7 @@ class RdmaConnection {
      * memory region that the worker thread can access. Second element is the lkey of 
      * the memory region.
      */
-    std::pair<void*, uint32_t> GetWorkerMemoryRegion(WorkerTid worker_thread_id);
+    std::pair<void*, uint32_t> GetWorkerThreadMemoryRegion(WorkerTid worker_thread_id);
 
     /**
      * @brief Get the underlying used endpoint
@@ -108,39 +107,6 @@ class RdmaConnection {
     RdmaEndpoint& GetEndpoint();
 
   private:
-    // Constants from Mellanox RDMA-Aware Programming manual
-    const int kMinRnrTimer = 0x12;
-    const int kTimeout = 14;
-    const int kRetryCount = 7;
-    const int kRnrRetry = 7;
-    const int kMaxDestRdAtomic = 0;
-    const int kMaxRdAtomic = 0;
-
-    /** A reference to the context configuration */
-    Config& config_;
-
-    /** The underlying endpoint used */
-    RdmaEndpoint endpoint_;
-
-    /** The GRPC client which will talk to the controller program */
-    RdmaGrpcClient grpc_client_;
-
-    /** The registered memory region used as an intermediate buffer */
-    ibv_mr* memory_region_;
-
-    const ibv_mtu mtu_;
-    const uint32_t num_queue_pairs_;
-
-    std::vector<ibv_cq*> completion_queues_;
-
-    std::vector<ibv_qp*> queue_pairs_;
-
-    // Data about neighbor queue pairs
-    std::vector<ibv_gid> neighbor_gids_;
-    std::vector<uint32_t> neighbor_qpns_;
-    std::vector<uint32_t> neighbor_psns_;
-    std::vector<uint32_t> neighbor_rkeys_;
-
     /**
      * @brief Create and initialize all queue pairs.
      */
@@ -182,6 +148,39 @@ class RdmaConnection {
      * queue_pairs_, neighbor_qpns_, neighbor_psns_, neighbor_rkeys_ vectors.
      */
     void MoveToRts(int qp_index);
+
+    // Constants from Mellanox RDMA-Aware Programming manual
+    const int kMinRnrTimer = 0x12;
+    const int kTimeout = 14;
+    const int kRetryCount = 7;
+    const int kRnrRetry = 7;
+    const int kMaxDestRdAtomic = 0;
+    const int kMaxRdAtomic = 0;
+
+    /** A reference to the context configuration */
+    Config& config_;
+
+    /** The underlying endpoint used */
+    RdmaEndpoint endpoint_;
+
+    /** The GRPC client which will talk to the controller program */
+    RdmaGrpcClient grpc_client_;
+
+    /** The registered memory region used as an intermediate buffer */
+    ibv_mr* memory_region_;
+
+    const ibv_mtu mtu_;
+    const uint32_t num_queue_pairs_;
+
+    std::vector<ibv_cq*> completion_queues_;
+
+    std::vector<ibv_qp*> queue_pairs_;
+
+    // Data about neighbor queue pairs
+    std::vector<ibv_gid> neighbor_gids_;
+    std::vector<uint32_t> neighbor_qpns_;
+    std::vector<uint32_t> neighbor_psns_;
+    std::vector<uint32_t> neighbor_rkeys_;
 };
 
 } // namespace switchml

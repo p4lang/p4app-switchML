@@ -6,6 +6,8 @@
 
 #include "rdma_worker_thread.h"
 
+#include <stdlib.h>
+
 #include "common_cc.h"
 #include "rdma_utils.h"
 #include "prepostprocessor.h"
@@ -21,13 +23,13 @@ RdmaWorkerThread::RdmaWorkerThread(Context& context, RdmaBackend& backend, Confi
     config_(config),
     thread_(nullptr),
     ppp_(),
-    completion_queue_(backend_.GetConnection()->GetWorkerCompletionQueue(this->tid_)),
-    queue_pairs_(backend_.GetConnection()->GetWorkerQueuePairs(this->tid_)),
+    completion_queue_(backend_.GetConnection()->GetWorkerThreadCompletionQueue(this->tid_)),
+    queue_pairs_(backend_.GetConnection()->GetWorkerThreadQueuePairs(this->tid_)),
     send_sges_(this->queue_pairs_.size()),
     send_wrs_(this->queue_pairs_.size()),
     recv_wrs_(this->queue_pairs_.size()),
     msg_ids_(this->queue_pairs_.size(), 0),
-    registered_buffer_ptr_(backend_.GetConnection()->GetWorkerMemoryRegion(this->tid_).first),
+    registered_buffer_ptr_(backend_.GetConnection()->GetWorkerThreadMemoryRegion(this->tid_).first),
     write_posted_count_per_qp_(this->queue_pairs_.size())
 #ifdef TIMEOUTS
     ,timeouts_queue_(this->queue_pairs_.size(),
@@ -58,7 +60,7 @@ void RdmaWorkerThread::operator()() {
     // Bind thread on one core
     BindToCore(bk.GetConnection()->GetEndpoint().GetDevice(), this->tid_); 
 
-    std::vector<uint32_t> rkeys = bk.GetConnection()->GetWorkerRkeys(this->tid_);
+    std::vector<uint32_t> rkeys = bk.GetConnection()->GetWorkerThreadRkeys(this->tid_);
     std::vector<ibv_wc> completions(this->queue_pairs_.size());
 
     CHECK(this->queue_pairs_.size() == max_outstanding_msgs);
@@ -85,7 +87,7 @@ void RdmaWorkerThread::operator()() {
         // Initialize send SGE, the address is filled in later
         this->send_sges_[qpn].addr = 0;
         this->send_sges_[qpn].length = msg_size;
-        this->send_sges_[qpn].lkey = bk.GetConnection()->GetWorkerMemoryRegion(this->tid_).second;
+        this->send_sges_[qpn].lkey = bk.GetConnection()->GetWorkerThreadMemoryRegion(this->tid_).second;
 
         // Send work requests
         std::memset(&this->send_wrs_[qpn], 0, sizeof(this->send_wrs_[qpn]));
@@ -188,9 +190,10 @@ void RdmaWorkerThread::operator()() {
             for (int i = 0; i < cnum; ++i) {
                 CHECK_EQ(completions[i].status, IBV_WC_SUCCESS)
                     << "Worker thread '" << this->tid_ << "' "
-                    << " received completion error for " << completions[i].wr_id
+                    << " received completion error for work request id " << completions[i].wr_id
                     << " with status "
-                    << ibv_wc_status_str(completions[i].status);
+                    << ibv_wc_status_str(completions[i].status)
+                    << " opcode " << completions[i].opcode;
                 
                 if (completions[i].opcode == IBV_WC_RECV_RDMA_WITH_IMM) {
                     // This completion indicates a received message
@@ -203,7 +206,6 @@ void RdmaWorkerThread::operator()() {
 
                     uint16_t received_short_msg_id = completions[i].imm_data & 0xFFFF;
                     uint16_t expected_short_msg_id = msg_ids_[qpn] & 0xFFFF;
-                    // TODO: remove DVLOG(3) << "imm_data: " << completions[i].imm_data << ":" << std::hex << completions[i].imm_data;
 
                     // TODO: Is this the message that we are expecting from this qpn?
                     // if(received_short_msg_id != expected_short_msg_id) {
@@ -341,7 +343,6 @@ void RdmaWorkerThread::PostSendWr(uint16_t qpn) {
             << this->send_sges_[qpn].length << " rkey/slot " << std::hex
             << this->send_wrs_[qpn].wr.rdma.rkey << std::dec;
 
-    //TODO: Remove DVLOG(3) << "imm_data: " << this->send_wrs_[qpn].imm_data << ":" << std::hex << this->send_wrs_[qpn].imm_data;
     this->backend_.GetConnection()->PostSend(this->queue_pairs_[qpn], &this->send_wrs_[qpn]);
 
 #ifdef TIMEOUTS

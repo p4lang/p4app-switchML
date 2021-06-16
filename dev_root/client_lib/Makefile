@@ -15,18 +15,19 @@
 # Note: we postfix most variables with _ to avoid collisions with DPDK's build system
 
 # Init path variables
-MKDIR_ := $(dir $(realpath $(firstword $(MAKEFILE_LIST)))).
-BUILDDIR ?= $(MKDIR_)/../build
+DEVROOT := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))..
+BUILDDIR ?= $(DEVROOT)/build
+
 INCDIR_ := $(BUILDDIR)/include/switchml
 LIBDIR_ := $(BUILDDIR)/lib
 OBJDIR_ := $(BUILDDIR)/obj
-SRCDIR_ ?= $(MKDIR_)/src
+SRCDIR_ ?= $(DEVROOT)/client_lib/src
 SRCDIRS_ := $(SRCDIR_) $(SRCDIR_)/prepostprocessors $(SRCDIR_)/schedulers # The directories that we include by default.
 CFGFILES := $(SRCDIR_)/configs/general.cfg
 LIB ?= libswitchml-client.a # Name constraint from DPDK
 
 ifeq ($(DPDK),1)
-RTE_SDK = $(MKDIR_)/../third_party/dpdk
+RTE_SDK = $(DEVROOT)/third_party/dpdk
 RTE_TARGET = build
 include $(RTE_SDK)/mk/rte.vars.mk
 endif
@@ -98,7 +99,7 @@ endif
 
 ifneq ($(VCL), 0)
 $(info VCL set. Compiling with vector instructions support)
-CXXFLAGS += -DVCL -I $(MKDIR_)/../third_party/
+CXXFLAGS += -DVCL -I $(DEVROOT)/third_party/
 ifeq ($(DEBUG), 1)
 $(warning VCL may cause problems if it was compiled with the DEBUG flag and without optimizations )
 endif
@@ -106,8 +107,8 @@ endif
 
 # GRPC/Protobuf variables
 ifeq ($(GRPC),1)
-PROTOSDIR ?= ../protos
-GRPC_HOME ?= ../third_party/grpc/build
+PROTOSDIR ?= $(DEVROOT)/protos
+GRPC_HOME ?=$(DEVROOT)/third_party/grpc/build
 PROTOC ?= $(GRPC_HOME)/bin/protoc
 GRPC_CPP_PLUGIN ?= $(GRPC_HOME)/bin/grpc_cpp_plugin
 

@@ -11,11 +11,9 @@
 # - MLX4: Configure DPDK for Mellanox ConnectX-3. 
 #
 
-# The path to the directory containing this makefile
-MKDIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST)))).
+DEVROOT := $(realpath ../)
 
 CMAKE ?= cmake
-
 ifeq ($(DEBUG),1)
 $(info Compiling third_party with DEBUG)
 CXXFLAGS += -DDEBUG -O0 -g
@@ -59,9 +57,14 @@ vcl:
 grpc:
 	mkdir -p grpc/cmake/build
 	cd grpc/cmake/build && \
-	$(CMAKE) -DCMAKE_INSTALL_PREFIX=$(MKDIR)/grpc/build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DgRPC_INSTALL=ON -DgRPC_BUILD_TESTS=OFF -DgRPC_SSL_PROVIDER=package ../.. && \
+	$(CMAKE) -DCMAKE_INSTALL_PREFIX=$(DEVROOT)/third_party/grpc/build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DgRPC_INSTALL=ON -DgRPC_BUILD_TESTS=OFF -DgRPC_SSL_PROVIDER=package ../.. && \
 	make -j && \
 	make install
+	@echo Make sure that you register the grpc/protobuf libraries in the system before you try to run any program that runs switchml rdma.
+	@echo You can do that by executing `sudo echo $(DEVROOT)/third_party/grpc/build/ > /etc/ld.so.conf.d/00_switchml.conf` to add the path.
+	@echo Then run `sudo ldconfig` to update the list of shared libraries in the same.
+	@echo To undo you can simply remove the file `sudo rm /etc/ld.so.conf.d/00_switchml.conf` then updating the list of shared libraries using `sudo ldconfig`.
+	@echo Alternatively, if you do not want to register this local grpc/protobuf installation, you can always set LD_LIBRARY_PATH=$(DEVROOT)/third_party/grpc/build in your environment before running any switchml program.
 
 .PHONY: clean
 clean:

@@ -12,13 +12,14 @@
 # - MLX4 (0): Set if you are using Mellanox ConnectX-4
 #
 
-BUILDDIR ?= ../build
+DEVROOT := $(realpath ../)
+BUILDDIR ?= $(DEVROOT)/build
 SWITCHML_HOME ?= $(BUILDDIR)
 LIBDIR ?= $(SWITCHML_HOME)/lib
 INCDIR ?= $(SWITCHML_HOME)/include
 BINDIR ?= $(BUILDDIR)/bin
 OBJDIR ?= $(BUILDDIR)/obj
-SRCDIR ?= .
+SRCDIR ?= $(DEVROOT)/examples
 
 CXXFLAGS += -std=c++17
 LDFLAGS += -L$(LIBDIR)
@@ -34,7 +35,8 @@ endif
 
 ifeq ($(DPDK), 1)
 $(info DPDK is set.)
-LDFLAGS += -L../third_party/dpdk/build/lib -ldl -lnuma
+DPDK_HOME ?= $(DEVROOT)/third_party/dpdk/build
+LDFLAGS += -L$(DPDK_HOME)/lib -ldl -lnuma
 ifeq ($(MLX5),1)
 $(info MLX5 is set.)
 LDFLAGS += -libverbs -lmlx5 -lmnl
@@ -54,7 +56,7 @@ LDFLAGS += -libverbs -lhugetlbfs
 endif
 
 ifeq ($(GRPC),1)
-GRPC_HOME ?= ../third_party/grpc/build
+GRPC_HOME ?= $(DEVROOT)/third_party/grpc/build
 export PKG_CONFIG_PATH = $(GRPC_HOME)/lib/pkgconfig/
 LDFLAGS += `pkg-config --libs protobuf grpc++`
 endif

@@ -56,8 +56,8 @@ RdmaConnection::RdmaConnection(Config& config)
     neighbor_gids_(num_queue_pairs_),
     neighbor_qpns_(num_queue_pairs_, 0),
     neighbor_psns_(num_queue_pairs_, 0),
-    neighbor_rkeys_(num_queue_pairs_, 0) {
-
+    neighbor_rkeys_(num_queue_pairs_, 0)
+{
     // Allocate buffer at same address on each node
     // The size of the buffer must be big enough to accomodate all the data that is outstanding.
     this->memory_region_ = this->endpoint_.AllocateAtAddress(
@@ -69,11 +69,11 @@ RdmaConnection::RdmaConnection(Config& config)
 
 RdmaConnection::~RdmaConnection() { this->endpoint_.free(memory_region_); }
 
-ibv_cq* RdmaConnection::GetWorkerCompletionQueue(WorkerTid worker_thread_id) {
+ibv_cq* RdmaConnection::GetWorkerThreadCompletionQueue(WorkerTid worker_thread_id) {
     return this->completion_queues_[worker_thread_id];
 }
 
-std::vector<ibv_qp*> RdmaConnection::GetWorkerQueuePairs(WorkerTid worker_thread_id) {
+std::vector<ibv_qp*> RdmaConnection::GetWorkerThreadQueuePairs(WorkerTid worker_thread_id) {
     uint64_t qps_per_worker_thread = this->num_queue_pairs_ / this->config_.general_.num_worker_threads;
     std::vector<ibv_qp*>::iterator start =
         this->queue_pairs_.begin() + qps_per_worker_thread * worker_thread_id;
@@ -82,7 +82,7 @@ std::vector<ibv_qp*> RdmaConnection::GetWorkerQueuePairs(WorkerTid worker_thread
     return std::vector<ibv_qp*>(start, end);
 }
 
-std::vector<uint32_t> RdmaConnection::GetWorkerRkeys(WorkerTid worker_thread_id) {
+std::vector<uint32_t> RdmaConnection::GetWorkerThreadRkeys(WorkerTid worker_thread_id) {
     uint64_t qps_per_worker_thread = this->num_queue_pairs_ / this->config_.general_.num_worker_threads;
     std::vector<uint32_t>::iterator start =
         this->neighbor_rkeys_.begin() + qps_per_worker_thread * worker_thread_id;
@@ -90,7 +90,7 @@ std::vector<uint32_t> RdmaConnection::GetWorkerRkeys(WorkerTid worker_thread_id)
     return std::vector<uint32_t>(start, end);
 }
 
-std::pair<void*, uint32_t> RdmaConnection::GetWorkerMemoryRegion(WorkerTid worker_thread_id) {
+std::pair<void*, uint32_t> RdmaConnection::GetWorkerThreadMemoryRegion(WorkerTid worker_thread_id) {
     uint64_t bytes_per_worker_thread = this->memory_region_->length / this->config_.general_.num_worker_threads;
     size_t offset = worker_thread_id * bytes_per_worker_thread;
     int8_t* advanced_ptr = static_cast<int8_t*>(this->memory_region_->addr) + offset;

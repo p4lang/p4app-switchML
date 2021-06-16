@@ -1,9 +1,20 @@
 # SwitchML Project
 # @file nccl_plugin makefile
 # @brief Used to build the nccl plugin
+#
+# Compilation flags --
+# Format: FLAG (default value): usage
+#
+# - DEBUG (0): Disable optimizations, add debug symbols, and enable detailed debugging messages.
+# - DPDK (0): Add dpdk backend specific compiler/linker options.
+# - MLX5 (0): Add dpdk backend Connect-x5 specific compiler/linker options.
+# - MLX4 (0): Add dpdk backend Connect-x4 specific compiler/linker options.
+# - RDMA (0): Add rdma backend specific compiler/linker options.
+#
 
 # Init path variables
-BUILDDIR ?= ../../build
+DEVROOT := $(realpath ../../)
+BUILDDIR ?= $(DEVROOT)/build
 LIBDIR := $(BUILDDIR)/lib
 
 NCCL_HOME ?=/usr/local
@@ -26,7 +37,8 @@ endif
 
 ifeq ($(DPDK), 1)
 $(info DPDK is set.)
-LDFLAGS += -L../../third_party/dpdk/build/lib -ldl -lnuma
+DPDK_HOME ?= $(DEVROOT)/third_party/dpdk/build
+LDFLAGS += -L $(DPDK_HOME)/lib -ldl -lnuma
 ifeq ($(MLX5),1)
 $(info MLX5 is set.)
 LDFLAGS += -libverbs -lmlx5 -lmnl

@@ -29,40 +29,29 @@ index 715403ac57..5e584acba8 100644
                  store, rank, size, options);
            }),
 diff --git a/torch/lib/c10d/CMakeLists.txt b/torch/lib/c10d/CMakeLists.txt
-index 4b206f3801..6dd1c3c221 100644
+index 4b206f3801..f12b46fb99 100644
 --- a/torch/lib/c10d/CMakeLists.txt
 +++ b/torch/lib/c10d/CMakeLists.txt
-@@ -1,5 +1,13 @@
+@@ -1,5 +1,9 @@
  cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
  
-+if(DEFINED ENV{SWITCHML_HOME})
-+  add_definitions(-DUSE_SWITCHML=1)
-+  message(STATUS "Building c10D with switchml support. SWITCHML_HOME: $ENV{SWITCHML_HOME}")
-+  if(DEFINED ENV{DPDK_HOME})
-+    message(STATUS "Building c10D with switchml dpdk backend support. DPDK_HOME: $ENV{DPDK_HOME}")
-+  endif()
-+endif()
++
++add_definitions(-DUSE_SWITCHML=1)
++message(STATUS "Building c10D with switchml support. Compilation FLAGS: #SWITCHML_COMPILATION_FLAGS#")
 +
  # Find modules.
  list(APPEND CMAKE_MODULE_PATH
    ${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/public
-@@ -76,8 +84,22 @@ if(USE_C10D_GLOO)
+@@ -76,8 +80,15 @@ if(USE_C10D_GLOO)
  endif()
  
  add_library(c10d STATIC ${C10D_SRCS})
 +
-+if(DEFINED ENV{SWITCHML_HOME})
-+  target_include_directories(c10d PUBLIC $ENV{SWITCHML_HOME}/include)
-+  target_link_directories(c10d PUBLIC $ENV{SWITCHML_HOME}/lib)
-+  if(DEFINED ENV{DPDK_HOME})
-+    target_link_directories(c10d PUBLIC $ENV{DPDK_HOME}/lib)
-+  endif()
-+
-+  # The following line should be replaced automatically using the pytorch patch make file to 
-+  # include the appropriate libraries based on your switchml compilation flags.
-+  #SWITCHML_LINK_LIBRARIES_LINE#
-+
-+endif()
++# The following lines should be filled automatically using the pytorch patch makefile to 
++# include the appropriate libraries based on your switchml compilation flags.
++target_link_directories(c10d PUBLIC $ENV{SWITCHML_LINK_DIR} )
++target_link_libraries(c10d PUBLIC $ENV{SWITCHML_LINK_LIB} )
++target_include_directories(c10d PUBLIC $ENV{SWITCHML_INC_DIR} )
 +
  set_property(TARGET c10d PROPERTY POSITION_INDEPENDENT_CODE ON)
 -set_property(TARGET c10d PROPERTY CXX_STANDARD 14)

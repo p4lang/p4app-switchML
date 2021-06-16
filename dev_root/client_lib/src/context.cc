@@ -156,10 +156,11 @@ void Context::WaitForAllJobs() {
 }
 
 bool Context::GetJobSlice(WorkerTid worker_thread_id, JobSlice& job_slice) {
-    LOG_IF(FATAL, this->context_state_ != ContextState::RUNNING) 
-        << "You cannot get a job slice unless the context is in the running state. Current context state: " << this->context_state_ << ".";
-    
-    return this->scheduler_->GetJobSlice(worker_thread_id, job_slice);
+    if(this->context_state_ != ContextState::RUNNING) {
+        return false;
+    } else {
+        return this->scheduler_->GetJobSlice(worker_thread_id, job_slice);
+    }
 }
 
 void Context::NotifyJobSliceCompletion(WorkerTid worker_thread_id, const JobSlice& job_slice) {

@@ -44,6 +44,11 @@ Then
     cd path_to_cloned_pytorch
     git apply path_to_switchml_build_dir/switchml_pytorch.patch
 
+Keep in mind that the patch will hard code the local default absolute paths of the switchml library, grpc, and dpdk (in case you are using the dpdk backend)
+into the pytorch code.
+Thus, if you change the location of these libraries you should generate and apply another patch after passing the `SWITCHML_HOME`, `DPDK_HOME`, `GRPC_HOME` 
+variables correctly to the pytorch patch makefile.
+
 #### 4. Build PyTorch
 
 PyTorch has lots of compilation flags and options. Advanced users should check the official repository's documentation to learn how to tailor the resulting library to their specific needs.
@@ -54,9 +59,7 @@ Activate your conda environment
 
 Build PyTorch
 
-    SWITCHML_HOME=<path_to_switchml_build_dir> CUDA_HOME=${CONDA_PREFIX} BUILD_TEST=0 ${CONDA_PREFIX}/bin/python setup.py install --prefix=${CONDA_PREFIX} 2>&1 | tee build.log
-
-If you are using DPDK then you must specify the DPDK build directory as well using the DPDK_HOME environment variable.
+    CUDA_HOME=${CONDA_PREFIX} BUILD_TEST=0 ${CONDA_PREFIX}/bin/python setup.py install --prefix=${CONDA_PREFIX} 2>&1 | tee build.log
 
 This will again take a good while.
 The script should run to completion without errors (Warnings are probably fine).
@@ -64,3 +67,9 @@ Once that's done you would have a conda environment that has SwitchML integrated
 
 You can then simply run your normal pytorch distributed training scripts.
 The only thing that you **must** do is choose **gloo** as the backend and SwitchML will kick in automatically when it can handle the collective operation.
+
+You may be interested in installing torchvision as well by running
+
+    pip install torchvision==0.8.2 pillow --no-dependencies
+
+We pass no-dependencies because pip may attempt to install another version of pytorch and uninstall our patched one.

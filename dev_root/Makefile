@@ -14,8 +14,9 @@
 # - TIMEOUTS (1): Compile with timeouts and retransmissions support.
 #
 
+DEVROOT := $(realpath .)
 # Where to store all compiled files:
-BUILDDIR ?= $(shell pwd)/build # Expand absolute path for sub makefiles
+BUILDDIR ?= $(DEVROOT)/build # Expand absolute path for sub makefiles
 
 .PHONY: default
 default: third_party client_lib examples benchmarks
@@ -30,30 +31,34 @@ third_party:
 
 .PHONY: client_lib
 client_lib:
-	$(MAKE) -C client_lib/ BUILDDIR=$(BUILDDIR)
+	$(MAKE) -C client_lib/
 
 .PHONY: examples
 examples: 
-	$(MAKE) -C examples/ BUILDDIR=$(BUILDDIR)
+	$(MAKE) -C examples/
 
 .PHONY: benchmarks
 benchmarks: 
-	$(MAKE) -C benchmarks/ BUILDDIR=$(BUILDDIR)
+	$(MAKE) -C benchmarks/
 
 .PHONY: pytorch_patch
 pytorch_patch: 
-	$(MAKE) -C frameworks_integration/pytorch_patch/ BUILDDIR=$(BUILDDIR)
+	$(MAKE) -C frameworks_integration/pytorch_patch/
 
 .PHONY: nccl_plugin
 nccl_plugin: 
-	$(MAKE) -C frameworks_integration/nccl_plugin/ BUILDDIR=$(BUILDDIR)
+	$(MAKE) -C frameworks_integration/nccl_plugin/
 
 .PHONY: clean
 clean:
 	$(MAKE) -C client_lib clean
+	$(MAKE) -C examples clean
+	$(MAKE) -C benchmarks clean
+	$(MAKE) -C frameworks_integration/nccl_plugin/ clean
+	$(MAKE) -C frameworks_integration/pytorch_patch/ clean
 	$(RM) -r $(BUILDDIR)
 
-# We rarely need to clean third party libraries as well so we have it as a seprate target
+# We rarely need to clean third party libraries as well so we have it as a separate target
 .PHONY: clean_all
 clean_all: clean
 	$(MAKE) -C third_party clean
