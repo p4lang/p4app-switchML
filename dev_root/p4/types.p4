@@ -212,9 +212,6 @@ struct ingress_metadata_t {
     // This bitmap has one bit set for the current packet's worker
     worker_bitmap_t worker_bitmap;
 
-    // Pool set, used for shadow copy
-    bit<1> pool_set;
-
     // Checksum stuff
     bool checksum_err_ipv4;
     bool update_ipv4_checksum;

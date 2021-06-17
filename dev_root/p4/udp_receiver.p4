@@ -64,9 +64,6 @@ control UDPReceiver(
 
         // Move the SwitchML set bit in the MSB to the LSB. TODO move set bit to MSB
         ig_md.switchml_md.pool_index = hdr.switchml.pool_index[13:0] ++ hdr.switchml.pool_index[15:15];
-
-        // Use the SwitchML set bit in the MSB to switch between sets
-        ig_md.pool_set = hdr.switchml.pool_index[15:15];
     }
 
     table receive_udp {
