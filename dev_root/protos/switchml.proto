@@ -1,13 +1,13 @@
 syntax = "proto3";
 
-package SwitchML;
+package switchml_proto;
 
 service Session {
-  rpc RDMASession (RDMASessionRequest) returns (RDMASessionResponse) {}
-  rpc UDPSession (UDPSessionRequest) returns (UDPSessionResponse) {}
+  rpc RdmaSession (RdmaSessionRequest) returns (RdmaSessionResponse) {}
+  rpc UdpSession (UdpSessionRequest) returns (UdpSessionResponse) {}
 }
 
-service Synch {
+service Sync {
   rpc Barrier(BarrierRequest) returns (BarrierResponse) {}
   rpc Broadcast(BroadcastRequest) returns (BroadcastResponse) {}
 }
@@ -19,10 +19,10 @@ enum PacketSize {
   MTU_1024 = 3;
 }
 
-message RDMASessionRequest {
+message RdmaSessionRequest {
   uint32 session_id = 1;
   uint32 rank = 2;
-  uint32 session_size = 3;
+  uint32 num_workers = 3;
   uint64 mac = 4;
   uint32 ipv4 = 5;
   uint32 rkey = 6;
@@ -32,7 +32,7 @@ message RDMASessionRequest {
   repeated uint32 psns = 10;
 }
 
-message RDMASessionResponse {
+message RdmaSessionResponse {
   uint64 session_id = 1;
   uint64 mac = 2;
   uint32 ipv4 = 3;
@@ -41,23 +41,23 @@ message RDMASessionResponse {
   repeated uint32 psns = 6;
 }
 
-message UDPSessionRequest {
+message UdpSessionRequest {
   uint64 session_id = 1;
   uint32 rank = 2;
-  uint32 session_size = 3;
+  uint32 num_workers = 3;
   uint64 mac = 4;
   uint32 ipv4 = 5;
   PacketSize packet_size = 7;
 }
 
-message UDPSessionResponse {
+message UdpSessionResponse {
   uint64 session_id = 1;
   uint64 mac = 2;
   uint32 ipv4 = 3;
 }
 
 message BarrierRequest {
-  uint32 size = 1;
+  uint32 num_workers = 1;
 }
 
 message BarrierResponse {
@@ -66,7 +66,7 @@ message BarrierResponse {
 message BroadcastRequest {
   uint64 value = 1;
   uint32 rank = 2;
-  uint32 size = 3;
+  uint32 num_workers = 3;
   uint32 root = 4;
 }
 

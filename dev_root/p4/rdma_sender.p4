@@ -10,7 +10,6 @@ control RDMASender(
 
     // Temporary variables
     rkey_t rdma_rkey;
-    bit<31> rdma_message_length;
     mac_addr_t rdma_switch_mac;
     ipv4_addr_t rdma_switch_ip;
 
@@ -25,9 +24,6 @@ control RDMASender(
         // Record switch addresses
         rdma_switch_mac = switch_mac;
         rdma_switch_ip = switch_ip;
-
-        // Record RDMA message length in case we need it for RDMA WRITEs
-        rdma_message_length = message_length; // length must be a power of two
     }
 
     table switch_mac_and_ip {
@@ -109,7 +105,7 @@ control RDMASender(
         rdma_send_counter.count();
     }
 
-    action fill_in_roce_write_fields(mac_addr_t dest_mac, ipv4_addr_t dest_ip, bit<64> base_addr, rkey_t rkey) {
+    action fill_in_roce_write_fields(mac_addr_t dest_mac, ipv4_addr_t dest_ip, rkey_t rkey) {
         fill_in_roce_fields(dest_mac, dest_ip);
 
         rdma_rkey = rkey;
@@ -176,12 +172,12 @@ control RDMASender(
         hdr.ib_reth.addr = eg_md.switchml_rdma_md.rdma_addr;
     }
 
-    action set_opcode() {
+    action set_middle() {
         set_opcode_common(ib_opcode_t.UC_RDMA_WRITE_MIDDLE);
         // use default adjusted length for UDP and IPv4 headers
     }
 
-    action set_immediate_opcode() {
+    action set_last_immediate() {
         set_opcode_common(ib_opcode_t.UC_RDMA_WRITE_LAST_IMMEDIATE);
         set_immediate();
 
@@ -189,7 +185,7 @@ control RDMASender(
         hdr.ipv4.total_len = hdr.ipv4.total_len + (bit<16>) hdr.ib_immediate.minSizeInBytes();
     }
 
-    action set_rdma_opcode() {
+    action set_first() {
         set_opcode_common(ib_opcode_t.UC_RDMA_WRITE_FIRST);
         set_rdma();
 
@@ -197,7 +193,7 @@ control RDMASender(
         hdr.ipv4.total_len = hdr.ipv4.total_len + (bit<16>) hdr.ib_reth.minSizeInBytes();
     }
 
-    action set_rdma_immediate_opcode() {
+    action set_only_immediate() {
         set_opcode_common(ib_opcode_t.UC_RDMA_WRITE_ONLY_IMMEDIATE);
         set_rdma();
         set_immediate();
@@ -212,17 +208,17 @@ control RDMASender(
             eg_md.switchml_rdma_md.last_packet : exact;
         }
         actions = {
-            set_opcode;
-            set_immediate_opcode;
-            set_rdma_opcode;
-            set_rdma_immediate_opcode;
+            set_first;
+            set_middle;
+            set_last_immediate;
+            set_only_immediate;
         }
         size = 4;
         const entries = {
-            ( true, false) :           set_rdma_opcode(); // RDMA_WRITE_FIRST;
-            (false, false) :                set_opcode(); // RDMA_WRITE_MIDDLE;
-            (false,  true) :      set_immediate_opcode(); // RDMA_WRITE_LAST_IMMEDIATE;
-            ( true,  true) : set_rdma_immediate_opcode(); // RDMA_WRITE_ONLY_IMMEDIATE;
+            ( true, false) :          set_first(); // RDMA_WRITE_FIRST;
+            (false, false) :         set_middle(); // RDMA_WRITE_MIDDLE;
+            (false,  true) : set_last_immediate(); // RDMA_WRITE_LAST_IMMEDIATE;
+            ( true,  true) : set_only_immediate(); // RDMA_WRITE_ONLY_IMMEDIATE;
         }
     }
 

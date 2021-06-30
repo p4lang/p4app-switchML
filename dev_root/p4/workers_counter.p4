@@ -6,9 +6,9 @@ control WorkersCounter(
     inout ingress_metadata_t ig_md,
     in ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md) {
 
-    Register<num_workers_pair_t, pool_index_t>(register_size) worker_count;
+    Register<num_workers_pair_t, pool_index_t>(register_size) workers_count;
 
-    RegisterAction<num_workers_pair_t, pool_index_t, num_workers_t>(worker_count) worker_count_action = {
+    RegisterAction<num_workers_pair_t, pool_index_t, num_workers_t>(workers_count) workers_count_action = {
         // 1 means last packet; 0 means first packet
         void apply(inout num_workers_pair_t value, out num_workers_t read_value) {
             // Only works with jobs of 2 workers or more
@@ -22,19 +22,19 @@ control WorkersCounter(
         }
     };
 
-    RegisterAction<num_workers_pair_t, pool_index_t, num_workers_t>(worker_count) read_worker_count_action = {
+    RegisterAction<num_workers_pair_t, pool_index_t, num_workers_t>(workers_count) read_workers_count_action = {
         void apply(inout num_workers_pair_t value, out num_workers_t read_value) {
             read_value = value.first;
         }
     };
 
     action count_workers_action() {
-        ig_md.switchml_md.first_last_flag = worker_count_action.execute(ig_md.switchml_md.pool_index);
+        ig_md.switchml_md.first_last_flag = workers_count_action.execute(ig_md.switchml_md.pool_index);
     }
 
     action single_worker_count_action() {
         // Execute register action even though it's irrelevant with a single worker
-        worker_count_action.execute(ig_md.switchml_md.pool_index);
+        workers_count_action.execute(ig_md.switchml_md.pool_index);
         // Called for a new packet in a single worker job, so mark as last packet
         ig_md.switchml_md.first_last_flag = 1;
     }
@@ -45,7 +45,7 @@ control WorkersCounter(
     }
 
     action read_count_workers_action() {
-        ig_md.switchml_md.first_last_flag = read_worker_count_action.execute(ig_md.switchml_md.pool_index);
+        ig_md.switchml_md.first_last_flag = read_workers_count_action.execute(ig_md.switchml_md.pool_index);
     }
 
     // If no bits are set in the map result, this was the first time we
@@ -85,7 +85,7 @@ control WorkersCounter(
             (_, 0, packet_type_t.CONSUME1) : count_workers_action();
             (_, 0, packet_type_t.CONSUME2) : count_workers_action();
             (_, 0, packet_type_t.CONSUME3) : count_workers_action();
-            // if map_result is not all 0's and type is CONSUME0, don't count, just read
+            // if map_result is not all 0's, don't count, just read
             (_, _, packet_type_t.CONSUME0) : read_count_workers_action();
             (_, _, packet_type_t.CONSUME1) : read_count_workers_action();
             (_, _, packet_type_t.CONSUME2) : read_count_workers_action();

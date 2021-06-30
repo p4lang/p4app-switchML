@@ -58,7 +58,7 @@ control NextStepSelector(
         recirculate_for_consume(packet_type_t.CONSUME3, 2w3 ++ ig_intr_md.ingress_port[6:0]);
     }
 
-    action recirculate_for_HARVEST1_1024B(PortId_t recirc_port) {
+    action recirculate_for_HARVEST1(PortId_t recirc_port) {
         hdr.d0.setInvalid();
         recirculate_for_harvest(packet_type_t.HARVEST1, recirc_port);
     }
@@ -142,13 +142,12 @@ control NextStepSelector(
             ig_md.switchml_md.packet_type : ternary;
             ig_md.switchml_md.first_last_flag : ternary; // 1: last 0: first
             ig_md.switchml_md.map_result : ternary;
-            ig_md.switchml_md.worker_type : ternary;
         }
         actions = {
             recirculate_for_CONSUME1;
             recirculate_for_CONSUME2_same_port_next_pipe;
             recirculate_for_CONSUME3_same_port_next_pipe;
-            recirculate_for_HARVEST1_1024B;
+            recirculate_for_HARVEST1;
             recirculate_for_HARVEST2;
             recirculate_for_HARVEST3;
             recirculate_for_HARVEST4;
@@ -161,6 +160,7 @@ control NextStepSelector(
             drop;
         }
         const default_action = drop();
+        size = 128;
     }
 
     apply {
