@@ -57,23 +57,23 @@ void Stats::LogStats() {
 
     // Add global stats
     output << "Stats: "
-        << "\n    Submitted jobs: " << this->jobs_submitted_num_
-        << "\n    Submitted jobs sizes: " << List2Str(this->jobs_submitted_numel_)    
-        << "\n    Submitted jobs sizes distribution: " << DescribeIntList(this->jobs_submitted_numel_)    
-        << "\n    Finished jobs: " << this->jobs_finished_num_
+        << "\n    Submitted jobs: #" << this->jobs_submitted_num_ << "#"
+        << "\n    Submitted jobs sizes: #" << List2Str(this->jobs_submitted_numel_) << "#"
+        << "\n    Submitted jobs sizes distribution: #" << DescribeIntList(this->jobs_submitted_numel_) << "#"
+        << "\n    Finished jobs: #" << this->jobs_finished_num_ << "#"
     ;
 
     // Add per worker stats
     std::vector<uint64_t> ls;
     for (WorkerTid i = 0; i < this->num_worker_threads_; i++) {
         output
-            << "\n    Worker thread: " << i
-            << "\n        Total packets sent: " << total_pkts_sent_[i] 
-            << "\n        Total packets received: " << wrong_pkts_received_[i] + correct_pkts_received_[i]
-            << "\n        Wrong packets received: " << wrong_pkts_received_[i] 
-            << "\n        Correct packets received: " << correct_pkts_received_[i]
+            << "\n    Worker thread: #" << i << "#"
+            << "\n        Total packets sent: #" << total_pkts_sent_[i] << "#"
+            << "\n        Total packets received: #" << wrong_pkts_received_[i] + correct_pkts_received_[i] << "#"
+            << "\n        Wrong packets received: #" << wrong_pkts_received_[i] << "#"
+            << "\n        Correct packets received: #" << correct_pkts_received_[i] << "#"
 #ifdef TIMEOUTS
-            << "\n        Number of timeouts: " << timeouts_num_[i]
+            << "\n        Number of timeouts: #" << timeouts_num_[i] << "#"
 #endif
         ;
     }

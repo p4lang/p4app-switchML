@@ -62,8 +62,10 @@ CXXFLAGS += -DNDEBUG -O3
 endif
 
 ifeq ($(RDMA), 1)
+ifneq ($(MAKECMDGOALS),clean)
 # TODO:
 $(error The RDMA backend is not supported for the nccl plugin yet.)
+endif
 endif
 
 # Targets

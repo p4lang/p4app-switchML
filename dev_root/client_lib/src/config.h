@@ -61,6 +61,39 @@ struct GeneralConfig {
      * The backend is still used to for setup and cleanup.
     */
     bool instant_job_completion;
+
+    /**
+     * The IP address of the machine that's running the controller program.
+     * Note: This is not the same as the ip address that is passed to the switch_ip
+     * argument when starting the controller.
+     */
+    std::string controller_ip_str;
+
+    /**
+     * The port that the controller program is using. This is the value that you 
+     * passed to the port argument when starting the controller.
+     */
+    uint16_t controller_port;
+
+#ifdef TIMEOUTS
+    /**
+     * How much time in ms should we wait before we consider that a packet is lost.
+     * 
+     * Each worker thread creates a copy of this value at the start of working on a job slice.
+     * From that point the timeout value can be increased if the number of timeouts exceeds a threshold
+     * as a backoff mechanism.
+     */
+    double timeout;
+
+    /** How many timeouts should occur before we double the timeout time? */
+    uint64_t timeout_threshold;
+    
+    /** 
+     * By how much should we increment the threshold each time its exceeded.
+     * (Setting the bar higher to avoid doubling the timeout value too much) 
+     */
+    uint64_t timeout_threshold_increment;
+#endif
 };
 
 
@@ -78,34 +111,6 @@ struct DpdkBackendConfig {
      * corresponds to the correct network interface that you want to use for communication. 
      */
     std::string worker_ip_str;
-
-    /**
-     * Switch UDP port
-     * The switch uses this number to identify whether a packet belongs
-     * to switchml or if its normal traffic. So in order to ensure that the switch
-     * knows that this is switchml traffic set this port to something between
-     * 45056 and 49151.
-     */
-    uint16_t switch_port;
-
-    /**
-     * Switch IP address in the dotted decimal notation
-     * This must be on the same subnet as the workers and should match
-     * the ip address that was passed to the switch python controller via 
-     * the --switch_ip command line argument. Other than these restrictions
-     * you are free to choose the ip that you want as long as its unique in the
-     * local network.
-     */
-    std::string switch_ip_str;
-
-    /**
-     * Switch mac address
-     * This should match the mac address that was passed to the switch python
-     * controller via the --switch_mac command line argument. Other than 
-     * this restriction you are free to choose the mac that you want as long
-     * as its unique in the local network.
-     */
-    std::string switch_mac_str;
 
     /**
      * The DPDK core configuration
@@ -162,27 +167,6 @@ struct DpdkBackendConfig {
 
     /** Using what period in microseconds should we flush the transmit buffer? */
     uint32_t bulk_drain_tx_us;
-
-#ifdef TIMEOUTS
-    /**
-     * How much time in ms should we wait before we consider that a packet is lost.
-     * 
-     * Each worker thread creates a copy of this value at the start of working on a job slice.
-     * From that point the timeout value can be increased if the number of timeouts exceeds a threshold
-     * as a backoff mechanism.
-     */
-    double timeout;
-
-    /** How many timeouts should occur before we double the timeout time? */
-    uint64_t timeout_threshold;
-    
-    /** 
-     * By how much should we increment the threshold each time its exceeded.
-     * (Setting the bar higher to avoid doubling the timouet value too much) 
-     */
-    uint64_t timeout_threshold_increment;
-#endif
-
 };
 #endif
 
@@ -191,19 +175,6 @@ struct DpdkBackendConfig {
  * @brief Configuration options specific to using the RDMA backend.
  */
 struct RdmaBackendConfig {
-    /**
-     * The IP address of the machine that's running the controller program.
-     * Note: This is not the same as the ip address that is passed to the switch_ip
-     * argument when starting the controller.
-     */
-    std::string controller_ip_str;
-
-    /**
-     * The port that the controller program is using. This is the value that you 
-     * passed to the port argument when starting the controller.
-     */
-    uint16_t controller_port;
-
     /**
      * RDMA sends messages then the NIC splits a message into multiple packets.
      * Thus the number of elements in a message must be a multiple of a packet's number of elements.
@@ -242,20 +213,6 @@ struct RdmaBackendConfig {
      * be also in GPU memory and directly send data from the GPU instead of having to copy it to a registered CPU buffer.
      */
     bool use_gdr;
-
-#ifdef TIMEOUTS
-    /**
-     * How much time in ms should we wait before we consider that a packet is lost.
-     * 
-     * Each worker thread creates a copy of this value at the start of working on a job slice.
-     * From that point the timeout value can be increased if the number of timeouts exceeds a threshold
-     * as a backoff mechanism.
-     */
-    double timeout;
-
-    /** How many timeouts should occur before we double the timeout time? */
-    uint64_t timeout_threshold;
-#endif
 };
 #endif
 

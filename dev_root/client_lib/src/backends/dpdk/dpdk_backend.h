@@ -18,6 +18,7 @@
 #include "common.h"
 #include "context.h"
 #include "backend.h"
+#include "grpc_client.h"
 
 #define DPDK_SWITCH_ELEMENT_SIZE 4
 
@@ -74,8 +75,11 @@ class DpdkBackend : public switchml::Backend {
      * network address.
      */
     struct E2eAddress {
-      uint8_t mac[6];
+      /** An 8 bytes integer with the first 6 bytes representing the MAC address */
+      uint64_t mac;
+      /** A 4 byte integer representing the IP address. */
       uint32_t ip;
+      /** The 2 bytes integer representing the UDP port. */
       uint16_t port;
     };
 
@@ -110,6 +114,15 @@ class DpdkBackend : public switchml::Backend {
      * @see SetupWorker()
      */
     void CleanupWorker() override;
+
+    /**
+     * @brief Contacts the controller using the GRPC Client and tells it
+     * to create a UDP session.
+     * 
+     * This must not be called until the IP and MAC addresses
+     * of the switch and worker have been filled correctly.
+     */
+    void SetupSwitch();
 
     /**
      * @brief Get a reference to the switch end to end address in big endian.
@@ -153,6 +166,11 @@ class DpdkBackend : public switchml::Backend {
      */
     struct E2eAddress worker_e2e_addr_be_;
 
+    /** 
+     * The GRPC client which will be used to tell the controller
+     * to create a UDP session on the switch
+     */
+    GrpcClient grpc_client_;
 };
 
 } // namespace switchml

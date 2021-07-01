@@ -67,8 +67,8 @@ void BuildPacket(rte_mbuf* mbuf, JobId job_id, uint32_t pkt_id,
     // 1. Ethernet header
     struct rte_ether_hdr *ether = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr *);
     // Set MAC addresses
-    memcpy(ether->s_addr.addr_bytes, worker_thread_e2e_addr_be.mac, 6);
-    memcpy(ether->d_addr.addr_bytes, switch_e2e_addr_be.mac, 6);
+    memcpy(ether->s_addr.addr_bytes, &worker_thread_e2e_addr_be.mac, 6);
+    memcpy(ether->d_addr.addr_bytes, &switch_e2e_addr_be.mac, 6);
 
     // Set ethertype
     ether->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
@@ -92,6 +92,8 @@ void BuildPacket(rte_mbuf* mbuf, JobId job_id, uint32_t pkt_id,
 
     // 4. Switchml header
     // Categorize the length of the packet
+    // TODO: Remove this as this information is already sent to the controller at
+    // grpc setup.
     uint8_t pkt_len_enum;
     if (packet_numel < 64) {
         pkt_len_enum = 0;
@@ -132,8 +134,8 @@ void ReusePacket(rte_mbuf* mbuf, uint32_t pkt_id, uint64_t packet_numel,
                  DpdkBackend::E2eAddress worker_thread_e2e_addr_be, std::shared_ptr<PrePostProcessor> ppp) {
     // 1. Set MACs
     struct rte_ether_hdr* ether = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr*);
-    memcpy(ether->s_addr.addr_bytes, worker_thread_e2e_addr_be.mac, 6);
-    memcpy(ether->d_addr.addr_bytes, switch_e2e_addr_be.mac, 6);
+    memcpy(ether->s_addr.addr_bytes, &worker_thread_e2e_addr_be.mac, 6);
+    memcpy(ether->d_addr.addr_bytes, &switch_e2e_addr_be.mac, 6);
 
     // 2. Set IPs
     struct rte_ipv4_hdr * const ip = reinterpret_cast<struct rte_ipv4_hdr*>(ether + 1);
@@ -209,7 +211,7 @@ void ResendPacketCallback(struct rte_timer *timer, void *arg) {
 
     struct ResendPacketCallbackArgs* args = static_cast<struct ResendPacketCallbackArgs*>(arg);
     static thread_local uint64_t timeouts_counter = 0;
-    static thread_local uint64_t timeout_threshold = args->dwt->config_.backend_.dpdk.timeout_threshold;
+    static thread_local uint64_t timeout_threshold = args->dwt->config_.general_.timeout_threshold;
     timeouts_counter++;
     
     DVLOG(3) << "Timeout occured. Resending packet short_job_id=" << (uint8_t) args->job_id << " pkt_id="
@@ -218,10 +220,10 @@ void ResendPacketCallback(struct rte_timer *timer, void *arg) {
     // If timeouts_counter exceeded the threshold then update the timer cycles
     if (timeouts_counter >= timeout_threshold) {
         DVLOG(3) << "Timeouts counter reached " << timeouts_counter << " resetting it and increasing the timeout threshold from " 
-            << timeout_threshold << " to " << timeout_threshold + args->dwt->config_.backend_.dpdk.timeout_threshold_increment
+            << timeout_threshold << " to " << timeout_threshold + args->dwt->config_.general_.timeout_threshold_increment
             << " and timer cycles from " << args->dwt->timer_cycles_  << " to " << args->dwt->timer_cycles_ * 2;
         timeouts_counter = 0;
-        timeout_threshold += args->dwt->config_.backend_.dpdk.timeout_threshold_increment;
+        timeout_threshold += args->dwt->config_.general_.timeout_threshold_increment;
         args->dwt->timer_cycles_ *= 2;
     }
 

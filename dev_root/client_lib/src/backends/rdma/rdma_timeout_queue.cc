@@ -21,15 +21,17 @@ TimeoutQueue::TQEntry::TQEntry()
     // Do nothing
 }
 
-TimeoutQueue::TimeoutQueue(const unsigned int num_entries,
+TimeoutQueue::TimeoutQueue(const uint32_t num_entries,
                              const std::chrono::milliseconds timeout,
-                             const unsigned int threshold)
+                             const uint32_t timeouts_threshold,
+                             const uint32_t timeouts_threshold_increment)
   : entries_(num_entries),
     head_(-1),
     tail_(-1),
     timeout_(timeout),
     timeouts_counter_(0),
-    timeouts_threshold_(threshold) 
+    timeouts_threshold_(timeouts_threshold),
+    timeouts_threshold_increment_(timeouts_threshold_increment) 
 {
     // Do nothing
 }
@@ -107,6 +109,7 @@ int TimeoutQueue::Check(const TimePoint& timestamp) {
                 // Backoff: we double the timeout once the timeouts exceed the threshold
                 this->timeouts_counter_ = 0;
                 this->timeout_ *= 2;
+                this->timeouts_threshold_ += this->timeouts_threshold_increment_;
             }
             return this->tail_;
         }

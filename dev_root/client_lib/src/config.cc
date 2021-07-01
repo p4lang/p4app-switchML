@@ -37,6 +37,13 @@ bool Config::LoadFromFile(std::string path) {
         ("general.scheduler", po::value<std::string>(&this->general_.scheduler)->default_value("fifo"))
         ("general.prepostprocessor", po::value<std::string>(&this->general_.prepostprocessor)->default_value("cpu_exponent_quantizer"))
         ("general.instant_job_completion", po::value<bool>(&this->general_.instant_job_completion)->default_value(false))
+        ("general.controller_ip", po::value<std::string>(&this->general_.controller_ip_str)->default_value("127.0.0.1"))
+        ("general.controller_port", po::value<uint16_t>(&this->general_.controller_port)->default_value(50099))
+#ifdef TIMEOUTS
+        ("general.timeout", po::value<double>(&this->general_.timeout)->default_value(10))
+        ("general.timeout_threshold", po::value<uint64_t>(&this->general_.timeout_threshold)->default_value(100))
+        ("general.timeout_threshold_increment", po::value<uint64_t>(&this->general_.timeout_threshold_increment)->default_value(100))
+#endif
     ;
     config_file_options.add(general_options);
 
@@ -54,10 +61,6 @@ bool Config::LoadFromFile(std::string path) {
     dpdk_options.add_options()
         ("backend.dpdk.worker_port", po::value<uint16_t>(&this->backend_.dpdk.worker_port)->default_value(4000))
         ("backend.dpdk.worker_ip", po::value<std::string>(&this->backend_.dpdk.worker_ip_str)->default_value("10.0.0.1"))
-        ("backend.dpdk.switch_port", po::value<uint16_t>(&this->backend_.dpdk.switch_port)->default_value(48879))
-        ("backend.dpdk.switch_ip", po::value<std::string>(&this->backend_.dpdk.switch_ip_str)->required())
-        ("backend.dpdk.switch_mac", po::value<std::string>(&this->backend_.dpdk.switch_mac_str)->required())
-
         ("backend.dpdk.cores", po::value<std::string>(&this->backend_.dpdk.cores_str)->default_value("0-2"))
         ("backend.dpdk.extra_eal_options", po::value<std::string>(&this->backend_.dpdk.extra_eal_options)->default_value(""))
         ("backend.dpdk.port_id", po::value<uint16_t>(&this->backend_.dpdk.port_id)->default_value(0))
@@ -66,11 +69,6 @@ bool Config::LoadFromFile(std::string path) {
         ("backend.dpdk.burst_rx", po::value<uint32_t>(&this->backend_.dpdk.burst_rx)->default_value(64))
         ("backend.dpdk.burst_tx", po::value<uint32_t>(&this->backend_.dpdk.burst_tx)->default_value(64))
         ("backend.dpdk.bulk_drain_tx_us", po::value<uint32_t>(&this->backend_.dpdk.bulk_drain_tx_us)->default_value(100))
-#ifdef TIMEOUTS
-        ("backend.dpdk.timeout", po::value<double>(&this->backend_.dpdk.timeout)->default_value(10))
-        ("backend.dpdk.timeout_threshold", po::value<uint64_t>(&this->backend_.dpdk.timeout_threshold)->default_value(50000))
-        ("backend.dpdk.timeout_threshold_increment", po::value<uint64_t>(&this->backend_.dpdk.timeout_threshold_increment)->default_value(50000))
-#endif
     ;
     config_file_options.add(dpdk_options);
 #endif
@@ -78,17 +76,11 @@ bool Config::LoadFromFile(std::string path) {
 #ifdef RDMA
     po::options_description rdma_options("backend.rdma");
     rdma_options.add_options()
-        ("backend.rdma.controller_ip", po::value<std::string>(&this->backend_.rdma.controller_ip_str)->default_value("127.0.0.1"))
-        ("backend.rdma.controller_port", po::value<uint16_t>(&this->backend_.rdma.controller_port)->default_value(50099))
         ("backend.rdma.msg_numel", po::value<uint32_t>(&this->backend_.rdma.msg_numel)->default_value(1024))
         ("backend.rdma.device_name", po::value<std::string>(&this->backend_.rdma.device_name)->default_value("mlx5_0"))
         ("backend.rdma.device_port_id", po::value<uint16_t>(&this->backend_.rdma.device_port_id)->default_value(1))
         ("backend.rdma.gid_index", po::value<uint16_t>(&this->backend_.rdma.gid_index)->default_value(3))
         ("backend.rdma.use_gdr", po::value<bool>(&this->backend_.rdma.use_gdr)->default_value(true))
-#ifdef TIMEOUTS
-        ("backend.rdma.timeout", po::value<double>(&this->backend_.rdma.timeout)->default_value(10))
-        ("backend.rdma.timeout_threshold", po::value<uint64_t>(&this->backend_.rdma.timeout_threshold)->default_value(50000))
-#endif
     ;
     config_file_options.add(rdma_options);
 #endif
@@ -209,6 +201,13 @@ void Config::PrintConfig() {
         << "\n    scheduler = " << this->general_.scheduler
         << "\n    prepostprocessor = " << this->general_.prepostprocessor
         << "\n    instant_job_completion = " << this->general_.instant_job_completion
+        << "\n    controller_ip_str = " << this->general_.controller_ip_str
+        << "\n    controller_port = " << this->general_.controller_port
+#ifdef TIMEOUTS
+        << "\n    timeout = " << this->general_.timeout
+        << "\n    timeout_threshold = " << this->general_.timeout_threshold
+        << "\n    timeout_threshold_increment = " << this->general_.timeout_threshold_increment
+#endif
         << "\n    --(derived)--"
         << "\n    max_outstanding_packets_per_worker_thread = " <<  outstanding_pkts_per_wt
     ;
@@ -225,9 +224,6 @@ void Config::PrintConfig() {
         VLOG(0) << "\n[backend.dpdk]"
             << "\n    worker_port = " << this->backend_.dpdk.worker_port
             << "\n    worker_ip = " << this->backend_.dpdk.worker_ip_str
-            << "\n    switch_port = " << this->backend_.dpdk.switch_port
-            << "\n    switch_ip = " << this->backend_.dpdk.switch_ip_str
-            << "\n    switch_mac = " << this->backend_.dpdk.switch_mac_str
 
             << "\n    cores = " << this->backend_.dpdk.cores_str
             << "\n    extra_eal_options = " << this->backend_.dpdk.extra_eal_options
@@ -237,11 +233,6 @@ void Config::PrintConfig() {
             << "\n    burst_rx = " << this->backend_.dpdk.burst_rx
             << "\n    burst_tx = " << this->backend_.dpdk.burst_tx
             << "\n    bulk_drain_tx_us = " << this->backend_.dpdk.port_id
-#ifdef TIMEOUTS
-            << "\n    timeout = " << this->backend_.dpdk.timeout
-            << "\n    timeout_threshold = " << this->backend_.dpdk.timeout_threshold
-            << "\n    timeout_threshold_increment = " << this->backend_.dpdk.timeout_threshold_increment
-#endif
         ;
     }
 #endif
@@ -252,17 +243,12 @@ void Config::PrintConfig() {
         uint64_t outstanding_msgs = this->general_.max_outstanding_packets / num_pkts_per_msg;
         uint64_t outstanding_msgs_per_wt = outstanding_msgs / this->general_.num_worker_threads;
         VLOG(0) << "\n[backend.rdma]"
-            << "\n    controller_ip_str = " << this->backend_.rdma.controller_ip_str
-            << "\n    controller_port = " << this->backend_.rdma.controller_port
             << "\n    msg_numel = " << this->backend_.rdma.msg_numel
             << "\n    device_name = " << this->backend_.rdma.device_name
             << "\n    device_port_id = " << this->backend_.rdma.device_port_id
             << "\n    gid_index = " << this->backend_.rdma.gid_index
             << "\n    use_gdr = " << this->backend_.rdma.use_gdr
-#ifdef TIMEOUTS
-            << "\n    timeout = " << this->backend_.rdma.timeout
-            << "\n    timeout_threshold = " << this->backend_.rdma.timeout_threshold
-#endif
+
             << "\n    --(derived)--"
             << "\n    num_pkts_per_msg = " <<  num_pkts_per_msg
             << "\n    max_outstanding_msgs = " << outstanding_msgs

@@ -21,6 +21,22 @@ std::string ToHex(T i) {
 template std::string ToHex<int>(int);
 template std::string ToHex<uint64_t>(uint64_t);
 
+std::string Mac2Str(const uint64_t addr) {
+
+    std::string mac_str = "", hex;
+
+    hex = ToHex((addr & ((uint64_t) 0xFF << 40)) >> 40);
+    mac_str += hex.substr(sizeof(uint64_t) * 2 - 2, 2);
+
+    for (int i = 4; i >= 0; i++) {
+
+        hex = ToHex((addr & ((uint64_t) 0xFF << 8 * i)) >> 8 * i);
+        mac_str += ":" + hex.substr(sizeof(uint64_t) * 2 - 2, 2);
+    }
+
+    return mac_str;
+}
+
 std::string Mac2Str(const rte_ether_addr addr) {
 
     std::string mac = "";
@@ -31,19 +47,22 @@ std::string Mac2Str(const rte_ether_addr addr) {
     return mac + ToHex(addr.addr_bytes[5]);
 }
 
-struct rte_ether_addr Str2Mac(std::string const& s, bool change_endianess) {
-    struct rte_ether_addr mac;
-    uint8_t* ptr = mac.addr_bytes;
+uint64_t Str2Mac(std::string const& s) {
+    uint8_t mac[6];
     uint last;
     int rc;
 
-    if (change_endianess)
-        rc = sscanf(s.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n", ptr + 5, ptr + 4, ptr + 3, ptr + 2, ptr + 1, ptr, &last);
-    else
-        rc = sscanf(s.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n", ptr, ptr + 1, ptr + 2, ptr + 3, ptr + 4, ptr + 5, &last);
+    rc = sscanf(s.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n", mac, mac + 1, mac + 2, mac + 3, mac + 4, mac + 5, &last);
 
-    LOG_IF(FATAL, rc != 6 || s.size() != last) << "Failed to parse mac address '" << s << "'.";
-    return mac;
+    if (rc != 6 || s.size() != last)
+        return -1;
+    else
+        return uint64_t(mac[0]) << 40 | uint64_t(mac[1]) << 32 | uint64_t(mac[2]) << 24 | uint64_t(mac[3]) << 16 | uint64_t(mac[4]) << 8 | uint64_t(mac[5]);
+}
+
+uint64_t ChangeMacEndianness(uint64_t mac) {
+    return (mac & 0xFFL) << 40 | (mac & 0xFF00L) << 24 | (mac & 0xFF0000L) << 8 | (mac & 0xFF000000L) >> 8 |
+           (mac & 0xFF00000000L) >> 24 | (mac & 0xFF0000000000L) >> 40;
 }
 
 } // namespace switchml

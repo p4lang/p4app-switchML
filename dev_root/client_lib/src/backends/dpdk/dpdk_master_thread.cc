@@ -84,7 +84,10 @@ void DpdkMasterThread::operator()() {
     struct rte_ether_addr w_mac;
     ret = rte_eth_macaddr_get(port_id, &w_mac);
     LOG_IF(FATAL,  ret < 0) << "Failed to get mac address using port id '" << port_id << "'";
-    memcpy(this->backend_.GetWorkerE2eAddr().mac, &w_mac, 6); 
+    memcpy(&this->backend_.GetWorkerE2eAddr().mac, w_mac.addr_bytes, 6);
+
+    // Now that we have the MAC address of the worker we can setup the switch.
+    this->backend_.SetupSwitch();
 
     // Check state of slave cores
     RTE_LCORE_FOREACH_SLAVE(lcore_id)

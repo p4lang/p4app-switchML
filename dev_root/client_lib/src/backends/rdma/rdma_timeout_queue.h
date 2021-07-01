@@ -58,10 +58,12 @@ class TimeoutQueue {
      * This should equal the number of outstanding messages.
      * @param [in] timeout The initial value of the timeout in milliseconds.
      * @param [in] threshold After how many timeouts should we double the timeout value?.
+     * @param [in] threshold After a timeout occurs how much should we increment the threshold?.
      */
-    TimeoutQueue(const unsigned int num_entries,
+    TimeoutQueue(const uint32_t num_entries,
                  const std::chrono::milliseconds timeout,
-                 const unsigned int threshold);
+                 const uint32_t timeouts_threshold,
+                 const uint32_t timeouts_threshold_increment);
     
     ~TimeoutQueue() = default;
 
@@ -129,10 +131,13 @@ class TimeoutQueue {
      * A counter to keep track of how many timeouts occured since the last
      * doubling of the timeout value
      */
-    unsigned int timeouts_counter_;
+    uint32_t timeouts_counter_;
 
     /** After how many timeouts should we double the timeout value? */
-    unsigned int timeouts_threshold_;
+    uint32_t timeouts_threshold_;
+
+    /** After how many timeouts should we double the timeout value? */
+    uint32_t timeouts_threshold_increment_;
 };
 
 } // namespace switchml

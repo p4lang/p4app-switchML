@@ -47,8 +47,11 @@ DpdkWorkerThread::~DpdkWorkerThread(){
 void DpdkWorkerThread::operator()() {
     int ret;
 
-    // Each worker thread has its own udp port
-    this->worker_thread_e2e_addr_be_.port = rte_cpu_to_be_16(config_.backend_.dpdk.worker_port + this->tid_);
+    // Each worker thread has its own udp source ports
+    this->worker_thread_e2e_addr_be_.port = rte_cpu_to_be_16(
+                                                rte_be_to_cpu_16(this->worker_thread_e2e_addr_be_.port)
+                                                + this->tid_
+                                            );
     this->lcore_id_ = rte_lcore_id();
 
     VLOG(0) << "Worker thread '" << this->tid_ << "' starting on core '" << this->lcore_id_ << "'";
@@ -124,7 +127,7 @@ void DpdkWorkerThread::operator()() {
     // Initialize timer library
     rte_timer_subsystem_init();
 
-    const uint64_t initial_timer_cycles = (rte_get_timer_hz() / 1000) * dpdkconf.timeout;
+    const uint64_t initial_timer_cycles = (rte_get_timer_hz() / 1000) * genconf.timeout;
     // The actual timer structs
     struct rte_timer timers[max_outstanding_pkts];
     // An array of ResendPacketCallbackArgs to pass to the ResendPacketCallback function

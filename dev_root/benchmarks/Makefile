@@ -43,6 +43,7 @@ endif
 
 ifeq ($(DPDK), 1)
 $(info DPDK is set.)
+GRPC = 1
 DPDK_HOME ?= $(DEVROOT)/third_party/dpdk/build
 LDFLAGS += -L$(DPDK_HOME)/lib -ldl -lnuma
 ifeq ($(MLX5),1)
@@ -59,6 +60,7 @@ LDFLAGS := -Wl,--whole-archive -ldpdk -Wl,--no-whole-archive $(LDFLAGS)
 endif
 
 ifeq ($(RDMA), 1)
+$(info RDMA is set.)
 GRPC = 1
 LDFLAGS += -libverbs -lhugetlbfs
 endif

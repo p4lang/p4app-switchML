@@ -76,7 +76,7 @@ class DpdkWorkerThread{
     /** A reference to the context configuration */
     Config& config_;
 
-    /** This worker's thread end to end address in bytes with network endianness (Big endian) */
+    /** What this worker thread will use as the source address for packets. (Big endian) */
     DpdkBackend::E2eAddress worker_thread_e2e_addr_be_;
 
     /** Worker thread core id */

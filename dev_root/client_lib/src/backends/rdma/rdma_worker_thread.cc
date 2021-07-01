@@ -33,8 +33,8 @@ RdmaWorkerThread::RdmaWorkerThread(Context& context, RdmaBackend& backend, Confi
     write_posted_count_per_qp_(this->queue_pairs_.size())
 #ifdef TIMEOUTS
     ,timeouts_queue_(this->queue_pairs_.size(),
-                     std::chrono::milliseconds(static_cast<long int>(config.backend_.rdma.timeout)),
-                     config.backend_.rdma.timeout_threshold)
+                     std::chrono::milliseconds(static_cast<long int>(config.general_.timeout)),
+                     config.general_.timeout_threshold, config.general_.timeout_threshold_increment)
 #endif
 {
     // Do nothing

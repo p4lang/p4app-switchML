@@ -46,6 +46,12 @@ $(info DEBUG is not set. Enabling all optimizations.)
 CXXFLAGS += -DNDEBUG -O3 
 endif
 
+ifneq ($(TIMEOUTS),0)
+$(info TIMEOUTS set. Compiling with retransmissions)
+CXXFLAGS += -DTIMEOUTS
+CFGFILES += $(SRCDIR_)/configs/timeouts.cfg
+endif
+
 ifeq ($(DUMMY),0)
 ifneq ($(DPDK),1)
 ifneq ($(RDMA),1)
@@ -68,18 +74,11 @@ CFGFILES += $(SRCDIR_)/configs/dummy.cfg
 endif
 
 ifeq ($(DPDK),1)
-
 $(info DPDK set. Compiling the dpdk backend..)
+GRPC = 1
 CXXFLAGS += -DDPDK
 SRCDIRS_ += $(SRCDIR_)/backends/dpdk
 CFGFILES += $(SRCDIR_)/configs/dpdk.cfg
-
-ifneq ($(TIMEOUTS),0)
-$(info TIMEOUTS set. Compiling with retransmissions)
-CXXFLAGS += -DTIMEOUTS
-CFGFILES += $(SRCDIR_)/configs/dpdk_timeouts.cfg
-endif
-
 endif
 
 ifeq ($(RDMA),1)
@@ -88,13 +87,6 @@ GRPC = 1
 CXXFLAGS += -DRDMA
 SRCDIRS_ += $(SRCDIR_)/backends/rdma
 CFGFILES += $(SRCDIR_)/configs/rdma.cfg
-
-ifneq ($(TIMEOUTS),0)
-$(info TIMEOUTS set. Compiling with retransmissions)
-CXXFLAGS += -DTIMEOUTS
-CFGFILES += $(SRCDIR_)/configs/rdma_timeouts.cfg
-endif
-
 endif
 
 ifneq ($(VCL), 0)
@@ -107,15 +99,9 @@ endif
 
 # GRPC/Protobuf variables
 ifeq ($(GRPC),1)
-PROTOSDIR ?= $(DEVROOT)/protos
-GRPC_HOME ?=$(DEVROOT)/third_party/grpc/build
-PROTOC ?= $(GRPC_HOME)/bin/protoc
-GRPC_CPP_PLUGIN ?= $(GRPC_HOME)/bin/grpc_cpp_plugin
-
-PBUFH := ./src/switchml.pb.h ./src/switchml.grpc.pb.h
-PBUFC := ./src/switchml.pb.cc ./src/switchml.grpc.pb.cc
-PBUF := $(PBUFH) $(PBUFC)
-CXXFLAGS +=  -I $(GRPC_HOME)/include
+GRPC_HOME ?= $(DEVROOT)/third_party/grpc/build
+PROTOS=protos
+CXXFLAGS += -I $(GRPC_HOME)/include
 # They might not be generated so we should add them explicitly just in case
 SRCS-absolute_ += $(SRCDIR_)/switchml.pb.cc $(SRCDIR_)/switchml.grpc.pb.cc
 endif
@@ -125,11 +111,17 @@ CXXFLAGS += $(shell printf '-I %s ' $(SRCDIRS_)) # add includes
 
 # Source files
 SRCS-absolute_ += $(shell find $(SRCDIRS_) -maxdepth 1 -name "*.cc" )
+ifneq ($(GRPC),1)
+SRCS-absolute_ := $(filter-out %grpc_client.cc,$(SRCS-absolute_))
+endif
 SRCS_ := $(shell realpath --relative-to="$(SRCDIR_)" $(SRCS-absolute_))
 SRCS-y := $(SRCS-absolute_) # Name constraint from DPDK
 
 # Header files
 HDRS-absolute_ := $(shell find $(SRCDIRS_) -maxdepth 1 -name "*.h" )
+ifneq ($(GRPC),1)
+HDRS-absolute_ := $(filter-out %grpc_client.h,$(HDRS-absolute_))
+endif
 HDRS_ := $(shell realpath --relative-to="$(SRCDIR_)" $(HDRS-absolute_))
 
 # Object files
@@ -153,19 +145,19 @@ ifeq ($(DPDK), 1)
 # of our source files. So we do not need to compile them ourselves.
 # Though it does use the standard variable names such as CXXFLAGS and LDFLAGS when 
 # it compiles our sources
-default_: _postbuild $(INCDIR_) $(LIBDIR_) config_
+default_: $(PROTOS) _postbuild $(INCDIR_) $(LIBDIR_) config_
 	$(Q)$(MAKE) clean
 	cp $(RTE_OUTPUT)/$(LIB) $(LIBDIR_)/
 	$(RM) -r $(RTE_OUTPUT)
 	$(RM) _postclean
 else
 # If we're not using DPDK then we need to compile the library ourselves.
-default_: $(LIBDIR_)/$(LIB) $(INCDIR_) config_
+default_: $(PROTOS) $(LIBDIR_)/$(LIB) $(INCDIR_) config_
 endif
 # Copy headers
 	cd $(SRCDIR_) && cp --parents $(HDRS_) $(INCDIR_)
 
-$(LIBDIR_)/$(LIB): protos $(OBJS_) $(LIBDIR_) 
+$(LIBDIR_)/$(LIB): $(OBJS_) $(LIBDIR_) 
 	$(AR) rcs $(LIBDIR_)/$(LIB) $(OBJS_)
 
 $(OBJDIR_)/%.o: $(SRCDIR_)/%.cc $(OBJDIRS_)
@@ -176,13 +168,8 @@ config_:
 	cat $(CFGFILES) > $(BUILDDIR)/switchml.cfg
 
 .PHONY: protos
-protos: $(PBUF)
-
-src/%.grpc.pb.cc src/%.grpc.pb.h:
-	LD_LIBRARY_PATH=$(GRPC_HOME)/lib $(PROTOC) -I $(PROTOSDIR) --grpc_out=src --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN) $(PROTOSDIR)/switchml.proto
-
-src/%.pb.cc src/%.pb.h:
-	LD_LIBRARY_PATH=$(GRPC_HOME)/lib $(PROTOC) -I $(PROTOSDIR) --cpp_out=src $(PROTOSDIR)/switchml.proto
+protos:
+	$(MAKE) -C $(DEVROOT)/protos cpp BUILDDIR=$(SRCDIR_)
 
 $(OBJDIRS_):
 	mkdir -p $@
@@ -201,7 +188,6 @@ else
 clean:
 	$(RM) -r $(OBJDIR_) 
 	$(RM) -r $(INCDIR_)
-# LIBDIR_ is used by other makefiles. Only remove what we produced
-	$(RM) $(LIBDIR_)/$(LIB)s
-	$(RM) $(PBUF)
+	$(RM) $(LIBDIR_)/$(LIB)
+	$(MAKE) -C $(DEVROOT)/protos clean BUILDDIR=$(SRCDIR_)
 endif

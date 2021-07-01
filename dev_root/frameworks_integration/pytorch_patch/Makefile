@@ -29,6 +29,7 @@ endif
 
 ifeq ($(DPDK), 1)
 $(info DPDK is set.)
+GRPC=1
 COMPILATION_FLAGS += DPDK=1
 LINKLIBS += -ldl -lnuma
 INCDIRS += -I$(DPDK_HOME)/include
@@ -52,8 +53,8 @@ endif
 
 ifeq ($(RDMA), 1)
 $(info RDMA is set.)
-COMPILATION_FLAGS += RDMA=1
 GRPC=1
+COMPILATION_FLAGS += RDMA=1
 LINKLIBS += -libverbs -lhugetlbfs
 endif
 

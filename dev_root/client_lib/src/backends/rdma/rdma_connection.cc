@@ -155,45 +155,40 @@ void RdmaConnection::ExchangeConnectionInfo() {
                << this->config_.general_.num_workers
                << " requesting connection to switch";
 
-    // Compute ID for this job
-    uint64_t job_id = 0;
-
-    // Job ID is the current timestamp
+    // We set the session id as the current timestamp
+    uint64_t session_id = 0;
     if (this->config_.general_.rank == 0) {
       auto current_time = std::chrono::high_resolution_clock::now();
       auto time_since_epoch = current_time.time_since_epoch();
       auto nanoseconds_since_epoch =
           std::chrono::duration_cast<std::chrono::nanoseconds>(
               time_since_epoch);
-      job_id = nanoseconds_since_epoch.count();
-      DVLOG(1) << "Job id is 0x" << std::hex << job_id << std::dec;
+      session_id = nanoseconds_since_epoch.count();
+      DVLOG(1) << "Session id is 0x" << std::hex << session_id << std::dec;
     }
 
-    // Broadcast job id to the other nodes
-    // A job in this context refers to a single run of the program and
-    // not the normal tensor job. 
-    // TODO: Change this name to something like session_id to disambiguate.
-    SwitchML::BcastRequest bcast_request;
-    SwitchML::BcastResponse bcast_response;
-    bcast_request.set_value(job_id);
-    bcast_request.set_my_rank(this->config_.general_.rank);
-    bcast_request.set_job_size(this->config_.general_.num_workers);
-    bcast_request.set_root_rank(0);
+    // Broadcast session id to other workers
+    switchml_proto::BroadcastRequest bcast_request;
+    switchml_proto::BroadcastResponse bcast_response;
+    bcast_request.set_value(session_id);
+    bcast_request.set_rank(this->config_.general_.rank);
+    bcast_request.set_num_workers(this->config_.general_.num_workers);
+    bcast_request.set_root(0);
 
-    this->grpc_client_.Bcast(bcast_request, &bcast_response);
+    this->grpc_client_.Broadcast(bcast_request, &bcast_response);
 
-    job_id = bcast_response.value();
+    session_id = bcast_response.value();
 
     // Send connection request to coordinator
-    SwitchML::RDMAConnectRequest request;
-    SwitchML::RDMAConnectResponse response;
-    request.set_job_id(job_id);
-    request.set_my_rank(this->config_.general_.rank);
-    request.set_job_size(this->config_.general_.num_workers);
+    switchml_proto::RdmaSessionRequest request;
+    switchml_proto::RdmaSessionResponse response;
+    request.set_session_id(session_id);
+    request.set_rank(this->config_.general_.rank);
+    request.set_num_workers(this->config_.general_.num_workers);
     request.set_mac(this->endpoint_.GetMac());
     request.set_ipv4(this->endpoint_.GetIPv4());
     request.set_rkey(this->memory_region_->rkey);
-    request.set_packet_size(SwitchML::RDMAConnectRequest_PacketSize(mtu_));
+    request.set_packet_size(switchml_proto::PacketSize(mtu_));
     request.set_message_size(this->config_.backend_.rdma.msg_numel * RDMA_SWITCH_ELEMENT_SIZE); 
 
     for (uint32_t i = 0; i < this->num_queue_pairs_; ++i) {
@@ -201,19 +196,19 @@ void RdmaConnection::ExchangeConnectionInfo() {
       request.add_psns(queue_pairs_[i]->qp_num / 2);  // for debugging
     }
 
-    SwitchML::BarrierRequest barrier_request;
-    SwitchML::BarrierResponse barrier_response;
-    barrier_request.set_job_size(this->config_.general_.num_workers);
+    switchml_proto::BarrierRequest barrier_request;
+    switchml_proto::BarrierResponse barrier_response;
+    barrier_request.set_num_workers(this->config_.general_.num_workers);
 
     if (this->config_.general_.rank == 0) {
       // First worker clears switch state before processing the request
-      this->grpc_client_.RDMAConnect(request, &response);
+      this->grpc_client_.CreateRdmaSession(request, &response);
       this->grpc_client_.Barrier(barrier_request, &barrier_response);
 
     } else {
       // Remaining workers process switch state after the first one is done
       this->grpc_client_.Barrier(barrier_request, &barrier_response);
-      this->grpc_client_.RDMAConnect(request, &response);
+      this->grpc_client_.CreateRdmaSession(request, &response);
     }
 
     // Ensure switch has gotten all workers' job state before proceeding
@@ -222,12 +217,11 @@ void RdmaConnection::ExchangeConnectionInfo() {
     // Copy remote data to our neigbor arrays to continue queue pair setup
     for (unsigned int i = 0; i < this->num_queue_pairs_; ++i) {
       if (this->config_.backend_.rdma.gid_index >= 2) {  // IPv4-based GID
-        this->neighbor_gids_[i] =
-            IPv4ToGID(response.ipv4s(i % response.ipv4s_size()));
+        this->neighbor_gids_[i] = IPv4ToGID(response.ipv4());
       } else {
-        this->neighbor_gids_[i] = MACToGID(response.macs(i % response.macs_size()));
+        this->neighbor_gids_[i] = MACToGID(response.mac());
       }
-      this->neighbor_rkeys_[i] = response.rkeys(i % response.rkeys_size());
+      this->neighbor_rkeys_[i] = response.rkey();
       this->neighbor_qpns_[i] = response.qpns(i);
       this->neighbor_psns_[i] = response.psns(i);
     }

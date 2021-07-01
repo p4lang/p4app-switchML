@@ -14,7 +14,7 @@
 #include "common.h"
 #include "config.h"
 #include "rdma_endpoint.h"
-#include "rdma_grpc_client.h"
+#include "grpc_client.h"
 
 namespace switchml {
 
@@ -163,8 +163,11 @@ class RdmaConnection {
     /** The underlying endpoint used */
     RdmaEndpoint endpoint_;
 
-    /** The GRPC client which will talk to the controller program */
-    RdmaGrpcClient grpc_client_;
+    /** 
+     * The GRPC client which will be used to tell the controller
+     * to create an RDMA session on the switch
+     */
+    GrpcClient grpc_client_;
 
     /** The registered memory region used as an intermediate buffer */
     ibv_mr* memory_region_;
