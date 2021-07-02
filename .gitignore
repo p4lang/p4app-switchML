@@ -3,3 +3,4 @@ docs/_build
 docs/client_lib_api
 docs/readmes
 __pycache__
+dev_root/controller/switchml_pb2*
