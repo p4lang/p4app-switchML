@@ -100,8 +100,9 @@ class PRE(Control):
         resp = self.node.entry_get(self.target, flags={'from_hw': False})
         for _, k in resp:
             if k.to_dict()['$MULTICAST_NODE_ID']['value'] == rid:
-                # Erase existing entry
-                self.node.entry_del(self.target, [k])
+                error_msg = "Multicast node {} already present".format(rid)
+                self.log.error(error_msg)
+                return (False, error_msg)
 
         # Add node
         self.node.entry_add(
