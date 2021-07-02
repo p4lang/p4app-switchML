@@ -4,12 +4,14 @@ This directory includes all of the different SwitchML components.
 
 ```
 p4: SwitchML P4 code for TNA
-controller: controller program
+controller: switch controller program
 client_lib: end-host library
 examples: set of example programs
 benchmarks: programs used to test raw performance
 frameworks_integration: code to integrate with ML frameworks
 third_party: third party software
+protos: protobuf description for the interface between controller and end-host
+scripts: helper scripts
 ```
 
 ## 1. Switch

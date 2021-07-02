@@ -11,7 +11,7 @@ Assuming that the `SDE` environment variable points to the P4 Studio folder, you
 
 ```bash
 cd $SDE/p4studio_build
-./p4studio_build.py --use-profile p416_examples_profile
+./p4studio_build.py --use-profile all_profile
 ```
 
 The control plane requires python 3.8, so P4 Studio must be compiled using python 3, so that the generated Barefoot Runtime libraries will be compatible with python 3.
@@ -39,7 +39,7 @@ The control plane requires python 3.8, so P4 Studio must be compiled using pytho
 
 SwitchML currently supports two packet formats: UDP and RoCEv2.
 
-With UDP, SwitchML packets carry a dedicated header between UDP and the payload. A range of UDP ports [0xBEE0, 0xBEEF] are used as destination/source ports in packets going received/sent by the switch. Currently we support a payload that is either 256B or 1024B (using recirculation). This is the overall packet format: 
+With UDP, SwitchML packets carry a dedicated header between UDP and the payload. A range of UDP ports [0xBEE0, 0xBEEF] are used as destination/source ports in packets going received/sent by the switch. Currently we support a payload that is either 256B or 1024B (using recirculation). This is the overall packet format:
 
 | Ethernet | IPv4 | UDP | SwitchML | Payload | Ethernet FCS |
 |--|--|--|--|--|--|

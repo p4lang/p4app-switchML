@@ -51,9 +51,9 @@ The optional arguments are the following:
 | --program PROGRAM | P4 program name | SwitchML |
 | --bfrt-ip ADDRESS | Name/address of the BFRuntime server | 127.0.0.1 |
 | --bfrt-port PORT | Port of the BFRuntime server | 50052 |
-| --switch-mac SWITCH_MAC | MAC address of the switch | 01:23:45:67:89:AB |
+| --switch-mac SWITCH_MAC | MAC address of the switch | 00:11:22:33:44:55 |
 | --switch-ip SWITCH_IP | IP address of switch | 10.0.0.254 |
-| --ports FILE | YAML file describing machines connected to ports | fib.yml |
+| --ports FILE | YAML file describing machines connected to ports | ports.yaml |
 | --log-level LEVEL | Logging level: ERROR, WARNING, INFO, DEBUG | INFO |
 
 
