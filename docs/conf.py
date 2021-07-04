@@ -40,8 +40,8 @@ sys.path.insert(0, os.path.abspath('.'))
 # -- Project information -----------------------------------------------------
 
 project = 'SwitchML'
-copyright = '2021, SwitchML'
-author = 'SwitchML'
+copyright = '2021, Intel-KAUST-Microsoft'
+author = 'Intel-KAUST-Microsoft'
 
 
 # -- General configuration ---------------------------------------------------

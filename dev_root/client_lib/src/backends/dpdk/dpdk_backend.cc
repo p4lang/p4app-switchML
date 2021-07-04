@@ -60,7 +60,7 @@ void DpdkBackend::SetupWorker() {
     this->worker_e2e_addr_be_.ip = w_ip.s_addr;
 
     // The actual worker port will be updated by each worker thread later
-    this->worker_e2e_addr_be_.port = this->config_.backend_.dpdk.worker_port;
+    this->worker_e2e_addr_be_.port = rte_cpu_to_be_16(this->config_.backend_.dpdk.worker_port);
 
     // Create and start the master thread
     this->master_thread_ = std::make_shared<DpdkMasterThread>(this->context_, *this, this->config_);

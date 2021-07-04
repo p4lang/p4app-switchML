@@ -77,7 +77,7 @@ bool Config::LoadFromFile(std::string path) {
     dpdk_options.add_options()
         ("backend.dpdk.worker_port", po::value<uint16_t>(&this->backend_.dpdk.worker_port)->default_value(4000))
         ("backend.dpdk.worker_ip", po::value<std::string>(&this->backend_.dpdk.worker_ip_str)->default_value("10.0.0.1"))
-        ("backend.dpdk.cores", po::value<std::string>(&this->backend_.dpdk.cores_str)->default_value("0-2"))
+        ("backend.dpdk.cores", po::value<std::string>(&this->backend_.dpdk.cores_str)->default_value("0-3"))
         ("backend.dpdk.extra_eal_options", po::value<std::string>(&this->backend_.dpdk.extra_eal_options)->default_value(""))
         ("backend.dpdk.port_id", po::value<uint16_t>(&this->backend_.dpdk.port_id)->default_value(0))
         ("backend.dpdk.pool_size", po::value<uint32_t>(&this->backend_.dpdk.pool_size)->default_value(8192 * 32))
