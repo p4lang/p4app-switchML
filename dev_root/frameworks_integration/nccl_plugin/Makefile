@@ -49,10 +49,18 @@ $(error Enabling both DPDK and RDMA backends is not supported.)
 endif
 endif
 
+ifeq ($(DEBUG),1)
+$(info "Compiling with DEBUG")
+CXXFLAGS += -DDEBUG -DENABLE_TRACE -O0 -g -Wall -Wextra
+else
+CXXFLAGS += -DNDEBUG -O3
+endif
+
 ifeq ($(DPDK), 1)
 $(info DPDK is set.)
+GRPC = 1
 DPDK_HOME ?= $(DEVROOT)/third_party/dpdk/build
-LDFLAGS += -L $(DPDK_HOME)/lib -ldl -lnuma
+LDFLAGS += -L$(DPDK_HOME)/lib -ldl -lnuma
 ifeq ($(MLX5),1)
 $(info MLX5 is set.)
 LDFLAGS += -libverbs -lmlx5 -lmnl
@@ -66,20 +74,16 @@ endif
 LDFLAGS := -Wl,--whole-archive -ldpdk -Wl,--no-whole-archive $(LDFLAGS) 
 endif
 
-# Add compilations macros
-
-ifeq ($(DEBUG),1)
-$(info "Compiling with DEBUG")
-CXXFLAGS += -DDEBUG -DENABLE_TRACE -O0 -g -Wall -Wextra
-else
-CXXFLAGS += -DNDEBUG -O3
-endif
-
 ifeq ($(RDMA), 1)
-ifneq ($(MAKECMDGOALS),clean)
-# TODO:
-$(error The RDMA backend is not supported for the nccl plugin yet.)
+$(info RDMA is set.)
+GRPC = 1
+LDFLAGS += -libverbs -lhugetlbfs
 endif
+
+ifeq ($(GRPC),1)
+GRPC_HOME ?= $(DEVROOT)/third_party/grpc/build
+export PKG_CONFIG_PATH = $(GRPC_HOME)/lib/pkgconfig/
+LDFLAGS += `pkg-config --libs protobuf grpc++`
 endif
 
 # Targets

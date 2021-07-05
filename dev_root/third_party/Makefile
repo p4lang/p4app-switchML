@@ -38,7 +38,7 @@ endif
 DEPS = vcl
 
 ifeq ($(DPDK),1)
-DEPS += dpdk
+DEPS += dpdk grpc
 endif
 ifeq ($(RDMA),1)
 DEPS += grpc

@@ -18,8 +18,6 @@ It helps ensure that the software stack is operating correctly down to the backe
 
 The DPDK backend uses the DPDK library to perform collective operations with the UDP transport. Thus it supports all of the NICs and drivers that DPDK supports (we tested only Intel and Mellanox NICs so far).
 
-**Important** The DPDK backend requires root access. So whether you are running a benchmark, an example, or using it through pytorch, you must give your application root privileges.
-
 ### 1.3 RDMA Backend
 
 The RDMA Backend uses ibverbs directly to perform communication using RDMA as a transport and it usually outperforms DPDK on more than 10Gbps NICs because of the additional hardware offloads. However, you must have a NIC that supports RDMA.
@@ -61,13 +59,13 @@ These are dependencies that are required only for the DPDK backend.
 On Debian/Ubuntu you can run the following command to install them:
 
 	sudo apt install -y \
-	libnuma-dev= \
-	ibverbs= \
+	libnuma-dev \
+	ibverbs \
 	mnl
 
-In addition to the above, you must compile the dpdk library by following the instructions in the README inside the third_party directory.
+**Important** The DPDK backend requires root access. So whether you are running a benchmark, an example, or using it through pytorch, you must give your application root privileges.
 
-### 1.3 RDMA Backend Dependencies
+### 1.3 RDMA Backend Requirements
 
 These are dependencies that are required only for the RDMA backend.
 
@@ -78,6 +76,17 @@ These are dependencies that are required only for the RDMA backend.
 | pkg-config | |
 | libibverbs-dev | 46mlnx1-1.46101 |
 | cmake | 3.17.0 |
+
+On Debian/Ubuntu you can run the following command to install them:
+
+	sudo apt install -y \
+	autoconf \
+	libtool \
+	pkg-config \
+	libibverbs-dev \
+	cmake \
+
+**Important** The RDMA backend requires that you disable ICRC checking on the NIC that you will use. We provide a template for a script that does just that in the [scripts](/dev_root/scripts) directory.
 
 ## 2. Compiling the Library
 
@@ -103,12 +112,12 @@ And finally the configuration file will be found in
 
 **Notes:**
  - There are more compilation flags available that you can read about in the Makefile header.
- - A dummy backend is always compiled so even if you pass RDMA or DPDK, you can still use the dummy backend for testing and debugging.
+ - A dummy backend is compiled by default so even if you pass RDMA or DPDK, you can still use the dummy backend for testing and debugging.
 
 ## 3. Using the library
 
-***Important !***
-*Before trying to use the library's API directly in your project, take a look at our [Framework Integration](/dev_root/frameworks_integration) directory to see if you can simply use one of the provided methods to integrate SwitchML into your DNN software stack.*
+***Important***
+*Before trying to use the library's API directly in your project, take a look at our [Frameworks Integration](/dev_root/frameworks_integration) directory to see if you can simply use one of the provided methods to integrate SwitchML into your DNN software stack.*
 
 *What follows is intended to give you a high level overview of what needs to be done. For a more detailed step by step guide look at the [examples](/dev_root/examples)*
 

@@ -39,12 +39,12 @@ This step is required unless you have installed  the patched NCCL directly on th
 
 Run:
 
-    sudo echo path_to_patched_nccl_repo/build/lib >> /etc/ld.so.conf.d/1switchml.conf
+    sudo bash -c 'echo path_to_patched_nccl_repo/build/lib > /etc/ld.so.conf.d/00_switchml.conf'
     sudo ldconfig
 
 To remove this registration so that you can use your normal version of NCCL simply undo what you did
 
-    sudo rm /etc/ld.so.conf.d/1switchml.conf
+    sudo rm /etc/ld.so.conf.d/00_switchml.conf
     sudo ldconfig
 
 ## 2. Building the plugin
