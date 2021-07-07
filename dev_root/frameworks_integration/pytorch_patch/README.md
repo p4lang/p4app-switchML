@@ -33,11 +33,11 @@ This will also take a good while to clone and checkout all submodules.
 #### 3. Apply the switchml pytorch patch to pytorch
 
 First, you need to generate the patch as the switchml_pytorch.patch in the pytorch_patch directory is not ready.
-Run make with the same compilation flags that you used to compile the library.
+Run make with the same build variables that you used to compile the library.
 This is important as pytorch needs to know about the backend specific libraries that it needs to link to.
 
     cd repo_home/dev_root/frameworks_integration/pytorch_patch
-    make <compilation flags>
+    make <variable flags>
 
 Then 
 
@@ -49,6 +49,20 @@ into the pytorch code.
 Thus, if you change the location of these libraries you should generate and apply another patch after passing the `SWITCHML_HOME`, `DPDK_HOME`, `GRPC_HOME` 
 variables correctly to the pytorch patch makefile.
 
+All build variables that can be passed:
+
+| Variable | Type | Default | Usage |
+|:--:|:--:|:--:|--|
+| DEBUG | boolean | 0 | Disable optimizations, add debug symbols, and enable detailed debugging messages. |
+| DPDK | boolean | 0 | Add dpdk backend specific compiler/linker options. |
+| MLX5 | boolean | 0 | Add dpdk backend Connect-x5/Connect-x4 specific compiler/linker options. |
+| MLX4 | boolean | 0 | Add dpdk backend Connect-x3 specific compiler/linker options. |
+| RDMA | boolean | 0 | Add rdma backend specific compiler/linker options. |
+| BUILDDIR | path | dev_root/build | Where to store the generated pytorch patch. | 
+| SWITCHML_HOME | path | dev_root/build/ | Where to look for the switchml client library installation. |
+| GRPC_HOME | path | dev_root/third_party/grpc/build | Where to look for the GRPC installation |
+| DPDK_HOME | path | dev_root/third_party/dpdk/build |  Where to look for the DPDK installation |
+
 #### 4. Build PyTorch
 
 PyTorch has lots of compilation flags and options. Advanced users should check the official repository's documentation to learn how to tailor the resulting library to their specific needs.
@@ -59,7 +73,7 @@ Activate your conda environment
 
 Build PyTorch
 
-    CUDA_HOME=${CONDA_PREFIX} BUILD_TEST=0 ${CONDA_PREFIX}/bin/python setup.py install --prefix=${CONDA_PREFIX} 2>&1 | tee build.log
+    CUDA_HOME=${CONDA_PREFIX} BUILD_TEST=0 USE_STATIC_NCCL=1 ${CONDA_PREFIX}/bin/python setup.py install --prefix=${CONDA_PREFIX} 2>&1 | tee build.log
 
 This will again take a good while.
 The script should run to completion without errors (Warnings are probably fine).

@@ -39,7 +39,8 @@ def setup(app):
         "dev_root/controller/README.md": "controller.md",
         "dev_root/frameworks_integration/README.md": "frameworks_integration.md",
         "dev_root/frameworks_integration/pytorch_patch/README.md": "pytorch_patch.md",
-        "dev_root/frameworks_integration/nccl_plugin/README.md": "nccl_plugin.md"
+        "dev_root/frameworks_integration/nccl_plugin/README.md": "nccl_plugin.md",
+        "dev_root/scripts/README.md": "scripts.md"
     }
 
     # We might need different links for three different use cases:
@@ -57,6 +58,7 @@ def setup(app):
         "/dev_root/benchmarks": "benchmarks",
         "/CONTRIBUTING.md": "contrib",
         "/LICENSE": "license",
+        "/dev_root/scripts": "scripts",
         "/dev_root/frameworks_integration": "frameworks_integration",
         "/dev_root/frameworks_integration/pytorch_patch": "pytorch_patch",
         "/dev_root/frameworks_integration/nccl_plugin": "nccl_plugin",

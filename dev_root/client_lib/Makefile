@@ -16,15 +16,20 @@
 # @file client_lib makefile
 # @brief The makefile to compile the client library.
 #
-# Compilation flags --
-# Format: FLAG (default value): usage
+# Build Variables --
+# Format: VARIABLE (type: default value): usage
 #
-# - DEBUG (0): Disable optimizations, add debug symbols, and enable detailed debugging messages.
-# - DPDK (0): Compile and include the dpdk backend.
-# - RDMA (0): Compile and include the rdma backend.
-# - DUMMY (1): Compile and include the dummy backend.
-# - VCL (1): Compile with the vector class library (Used to speedup prepostprocessing on the CPU)
-# - TIMEOUTS (1): Compile with timeouts and retransmissions support.
+# - DEBUG (boolean: 0): Disable optimizations, add debug symbols, and enable detailed debugging messages.
+# - DPDK (boolean: 0): Compile and include the dpdk backend.
+# - RDMA (boolean: 0): Compile and include the rdma backend.
+# - DUMMY (boolean: 1): Compile and include the dummy backend.
+# - VCL (boolean: 1): Compile with the vector class library (Used to speedup quantization on the CPU)
+# - TIMEOUTS (boolean: 1): Compile with timeouts and retransmissions support.
+# - BUILDDIR (path: dev_root/build): Where to store generated objects/include files/libraries/binaries...etc.
+# - GRPC_HOME (path: dev_root/third_party/grpc/build): Where to look for the GRPC installation
+# - DPDK_HOME (path: dev_root/third_party/dpdk/build): Where to look for the DPDK installation
+# - DPDK_SDK (path: dev_root/third_party/dpdk): Where to look for the DPDK SDK.
+# - VCL_HOME (path: dev_root/third_party/vcl): Where to look for VCL headers
 #
 # Note: we postfix most variables with _ to avoid collisions with DPDK's build system
 
@@ -41,7 +46,9 @@ CFGFILES := $(SRCDIR_)/configs/general.cfg
 LIB ?= libswitchml-client.a # Name constraint from DPDK
 
 ifeq ($(DPDK),1)
-RTE_SDK = $(DEVROOT)/third_party/dpdk
+DPDK_HOME ?= $(DEVROOT)/third_party/dpdk/build
+DPDK_SDK ?= $(DEVROOT)/third_party/dpdk
+RTE_SDK := $(DPDK_SDK)
 RTE_TARGET = build
 include $(RTE_SDK)/mk/rte.vars.mk
 endif
@@ -105,13 +112,13 @@ endif
 
 ifneq ($(VCL), 0)
 $(info VCL set. Compiling with vector instructions support)
-CXXFLAGS += -DVCL -I $(DEVROOT)/third_party/
+VCL_HOME ?= $(DEVROOT)/third_party/vcl
+CXXFLAGS += -DVCL -I $(VCL_HOME)
 ifeq ($(DEBUG), 1)
 $(warning VCL may cause problems if it was compiled with the DEBUG flag and without optimizations )
 endif
 endif
 
-# GRPC/Protobuf variables
 ifeq ($(GRPC),1)
 GRPC_HOME ?= $(DEVROOT)/third_party/grpc/build
 PROTOS=protos

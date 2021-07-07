@@ -6,13 +6,17 @@ You can click on [this](https://switchml.readthedocs.io) to read it online or bu
 
 ## Building the documentation
 
-To build the documentation you need two commands (Assuming you have already cloned the repository):
+To build the documentation you need three steps (Assuming you have already cloned the repository):
 
 First, install the python requirements using this command (Assuming you are inside the docs directory):
 
     pip install -r requirements.txt
 
-Second, run the docs makefile with the html target 
+Second, install doxygen (For Ubuntu)
+
+    sudo apt install doxygen
+
+Third, run the docs makefile with the html target 
 
     make html
 

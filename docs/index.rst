@@ -13,4 +13,5 @@ Welcome to SwitchML's documentation!
    readmes/examples
    readmes/benchmarks
    readmes/frameworks_integration
+   readmes/scripts
    readmes/contrib

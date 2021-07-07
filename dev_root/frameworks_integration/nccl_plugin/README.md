@@ -57,6 +57,21 @@ From the nccl_plugin directory run
 
     make NCCL_HOME=<path_to_patched_nccl_repo/build/> CUDA_HOME=<path to cuda installation>
 
+All variables that can be passed to the nccl plugin makefile:
+
+| Variable | Type | Default | Usage |
+|:--:|:--:|:--:|--|
+| DEBUG | boolean | 0 | Disable optimizations, add debug symbols, and enable detailed debugging messages. |
+| DPDK | boolean | 0 | Add dpdk backend specific compiler/linker options. |
+| MLX5 | boolean | 0 |  Add dpdk backend Connect-x5/Connect-x4 specific compiler/linker options. |
+| MLX4 | boolean | 0 |  Add dpdk backend Connect-x3 specific compiler/linker options. |
+| RDMA | boolean | 0 | Add rdma backend specific compiler/linker options. |
+| BUILDDIR | path | dev_root/build | Where to store generated objects and the plugin | 
+| GRPC_HOME | path | dev_root/third_party/grpc/build | Where to look for the GRPC installation |
+| DPDK_HOME | path | dev_root/third_party/dpdk/build |  Where to look for the DPDK installation |
+| CUDA_HOME | path | /usr/local/cuda |  Where to look for the CUDA installation |
+| NCCL_HOME | path | /usr/local |  Where to look for the patched NCCL installation |
+
 3. Register the nccl plugin
 
 At this point you should confirm that you have a libnccl-net.so shared library in the build directory.

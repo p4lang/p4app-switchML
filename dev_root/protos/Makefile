@@ -15,7 +15,15 @@
 # SwitchML Project
 # @file Protos makefile
 # @brief The makefile to generate the protobufs for the client library c++ and the controller's python.
+#
+# Build Variables --
+# Format: VARIABLE (type: default value): usage
+#
+# - BUILDDIR (path: dev_root/build): Where to store generated C++ and python files.
+# - GRPC_HOME (path: dev_root/third_party/grpc/build): Where to look for the GRPC installation
+#
 
+# Init path variables
 DEVROOT := $(realpath ../)
 
 BUILDDIR ?= $(DEVROOT)/build
@@ -30,18 +38,23 @@ PBUFH := ./src/switchml.pb.h ./src/switchml.grpc.pb.h
 PBUFC := ./src/switchml.pb.cc ./src/switchml.grpc.pb.cc
 PBUF := $(PBUFH) $(PBUFC)
 
+# Targets
+
 .PHONY: all
 all: cpp python
 
 .PHONY: cpp
-cpp: $(PROTOSDIR)/switchml.proto
+cpp: $(PROTOSDIR)/switchml.proto $(BUILDDIR)
 	LD_LIBRARY_PATH=$(GRPC_HOME)/lib $(PROTOC) -I $(PROTOSDIR) --cpp_out=$(BUILDDIR) --grpc_out=$(BUILDDIR) --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN) $<
 
 .PHONY: python
-python: $(PROTOSDIR)/switchml.proto
+python: $(PROTOSDIR)/switchml.proto $(BUILDDIR)
 	$(PROTOC) -I $(PROTOSDIR) --python_out=$(BUILDDIR) --grpc_python_out=$(BUILDDIR) --plugin=protoc-gen-grpc_python=$(GRPC_PYTHON_PLUGIN) $<
 
 .PHONY: clean
 clean:
 	$(RM) $(BUILDDIR)/switchml*.pb.*
 	$(RM) $(BUILDDIR)/switchml*_pb2*
+
+$(BUILDDIR):
+	mkdir -p $(BUILDDIR)

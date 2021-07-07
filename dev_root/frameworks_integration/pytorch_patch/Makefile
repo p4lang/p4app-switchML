@@ -16,13 +16,17 @@
 # @file pytorch_patch makefile
 # @brief This makefile is used to make the pytorch patch
 #
-# Compilation flags --
-# Format: FLAG (default value): usage
+# Build Variables --
+# Format: VARIABLE (type: default value): usage
 #
-# - DPDK (0): Add dpdk backend specific compiler/linker options.
-# - MLX5 (0): Add dpdk backend Connect-x5 specific compiler/linker options.
-# - MLX4 (0): Add dpdk backend Connect-x4 specific compiler/linker options.
-# - RDMA (0): Add rdma backend specific compiler/linker options.
+# - DPDK (boolean: 0): Add dpdk backend specific compiler/linker options.
+# - MLX5 (boolean: 0): Add dpdk backend Connect-x5/Connect-x4 specific compiler/linker options.
+# - MLX4 (boolean: 0): Add dpdk backend Connect-x3 specific compiler/linker options.
+# - RDMA (boolean: 0): Add rdma backend specific compiler/linker options.
+# - BUILDDIR (path: dev_root/build): Where to store the generated pytorch patch.
+# - SWITCHML_HOME (path: dev_root/build): Where to look for the switchml client library installation.
+# - GRPC_HOME (path: dev_root/third_party/grpc/build): Where to look for the GRPC installation
+# - DPDK_HOME (path: dev_root/third_party/dpdk/build): Where to look for the DPDK installation
 #
 
 DEVROOT := $(realpath ../../)

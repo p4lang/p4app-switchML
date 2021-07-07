@@ -16,16 +16,21 @@
 # @file examples makefile
 # @brief A single makefile to compile all of the examples
 # 
-# Compilation flags --
-# Format: FLAG (default value): usage
+# Build Variables --
+# Format: VARIABLE (type: default value): usage
 #
-# - DEBUG (0): Disable optimizations, add debug symbols.
-# - CUDA (0): Add the gpu device option for the allreduce benchmark.
-# - DPDK (0): Set if the client library was compiled with DPDK support.
-# - MLX5 (0): Set if you are using Mellanox ConnectX-5
-# - MLX4 (0): Set if you are using Mellanox ConnectX-4
+# - DEBUG (boolean: 0): Disable optimizations, add debug symbols.
+# - DPDK (boolean: 0): Add dpdk backend specific compiler/linker options.
+# - MLX5 (boolean: 0): Add dpdk backend Connect-x5/Connect-x4 specific compiler/linker options.
+# - MLX4 (boolean: 0): Add dpdk backend Connect-x3 specific compiler/linker options.
+# - RDMA (boolean: 0): Add rdma backend specific compiler/linker options.
+# - BUILDDIR (path: dev_root/build): Where to store generated objects/binaries.
+# - SWITCHML_HOME (path: dev_root/build): Where to look for the switchml client library installation.
+# - GRPC_HOME (path: dev_root/third_party/grpc/build): Where to look for the GRPC installation
+# - DPDK_HOME (path: dev_root/third_party/dpdk/build): Where to look for the DPDK installation
 #
 
+# Init path variables
 DEVROOT := $(realpath ../)
 BUILDDIR ?= $(DEVROOT)/build
 SWITCHML_HOME ?= $(BUILDDIR)
@@ -35,16 +40,25 @@ BINDIR ?= $(BUILDDIR)/bin
 OBJDIR ?= $(BUILDDIR)/obj
 SRCDIR ?= $(DEVROOT)/examples
 
+# Compiler / linker flags
 CXXFLAGS += -std=c++17
 LDFLAGS += -L$(LIBDIR)
 LDFLAGS += -lswitchml-client -lglog -lstdc++ -lboost_program_options -lpthread
+INC += -I$(INCDIR)
 
+# Parse compilation options -----
 ifeq ($(DEBUG),1)
 $(info DEBUG is set. Enabling all compiler warnings, adding debug symbols, and disabling optimizations.)
 CXXFLAGS += -DDEBUG -Wall -Wextra -g -O0
 else
 $(info DEBUG is not set. Enabling all optimizations.)
 CXXFLAGS += -DNDEBUG -O3
+endif
+
+ifeq ($(RDMA),1)
+ifeq ($(DPDK),1)
+$(error Enabling both DPDK and RDMA backends is not supported.)
+endif
 endif
 
 ifeq ($(DPDK), 1)
@@ -77,7 +91,7 @@ export PKG_CONFIG_PATH = $(GRPC_HOME)/lib/pkgconfig/
 LDFLAGS += `pkg-config --libs protobuf grpc++`
 endif
 
-INC += -I$(INCDIR)
+# Targets
 
 .phony: default
 default: hello_world

@@ -98,6 +98,10 @@ To build the library with DPDK support, add `DPDK=1` to the make command.
 
 	make DPDK=1
 
+To build the library with RDMA support, add `RDMA=1` to the make command.
+
+	make RDMA=1
+
 By default the library will be found in:
 
     dev_root/build/lib/libswitchml-client.a
@@ -110,9 +114,25 @@ And finally the configuration file will be found in
 
     dev_root/build/switchml.cfg
 
-**Notes:**
- - There are more compilation flags available that you can read about in the Makefile header.
- - A dummy backend is compiled by default so even if you pass RDMA or DPDK, you can still use the dummy backend for testing and debugging.
+Read through the other options to control the build below.
+
+### 2.1 Build Variables
+
+The following variables can all be passed to the client_lib makefile to control the build.
+
+| Variable | Type | Default | Usage |
+|:--:|:--:|:--:|--|
+| DEBUG | boolean | 0 | Disable optimizations, add debug symbols, and enable detailed debugging messages. |
+| DPDK | boolean | 0 | Compile and include the dpdk backend. |
+| RDMA | boolean | 0 | Compile and include the rdma backend. |
+| DUMMY | boolean | 1 | Compile and include the dummy backend. |
+| VCL | boolean | 1 | Compile with the vector class library (Used to speedup quantization on the CPU) |
+| TIMEOUTS | boolean | 1 | Compile with timeouts and retransmissions support. |
+| BUILDDIR | path | dev_root/build | Where to store generated objects/include files/libraries/binaries...etc. | 
+| GRPC_HOME | path | dev_root/third_party/grpc/build | Where to look for the GRPC installation |
+| DPDK_HOME | path | dev_root/third_party/dpdk/build |  Where to look for the DPDK installation |
+| DPDK_SDK | path | dev_root/third_party/dpdk |  Where to look for the DPDK SDK |
+| VCL_HOME | path | dev_root/third_party/vcl |  Where to look for the VCL headers |
 
 ## 3. Using the library
 

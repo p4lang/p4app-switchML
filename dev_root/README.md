@@ -23,11 +23,15 @@ To quickly build all end-host components (library, examples and benchmarks) you 
 
 If you still want to use the root Makefile, you can simply run:
 
-    make [compilation_flags]
+    make [build variables]
 
 For example, to build the project with the DPDK backend for Mellanox ConnectX-5 you can run:
 
     make DPDK=1 MLX5=1
+
+Or for RDMA:
+
+    make RDMA=1
 
 To have a minimal project build that only includes the dummy backend you can run:
 
@@ -35,7 +39,7 @@ To have a minimal project build that only includes the dummy backend you can run
 
 To only build the client library you can run:
 
-    make client_lib [compilation_flags]
+    make client_lib [build variables]
 
 **Notes:**
- - There are more compilation flags available that you can read about in the Makefile header.
+ - There are more build variables available that you can read about in the Makefile headers of the different components.

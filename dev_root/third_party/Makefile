@@ -16,13 +16,14 @@
 # @file third_party makefile
 # @brief The makefile to compile and prepare all needed third party libraries.
 #
-# Compilation flags --
-# Format: FLAG (default value): usage
+# Build Variables --
+# Format: VARIABLE (type: default value): usage
 #
-# - DEBUG: Disable optimizations and add debug symbols.
-# - DPDK: Compile and include the dpdk backend.
-# - MLX5: Configure DPDK for Mellanox ConnectX-4 ConnectX-5. 
-# - MLX4: Configure DPDK for Mellanox ConnectX-3. 
+# - DEBUG (boolean: 0): Disable optimizations and add debug symbols.
+# - DPDK (boolean: 0): Compile all third party libraries needed by the DPDK backend.
+# - MLX5 (boolean: 0): Configure DPDK for Mellanox ConnectX-4 ConnectX-5. 
+# - MLX4 (boolean: 0): Configure DPDK for Mellanox ConnectX-3. 
+# - RDMA (boolean: 0): Compile all third party libraries needed by the RDMA backend.
 #
 
 DEVROOT := $(realpath ../)

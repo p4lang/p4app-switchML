@@ -15,6 +15,12 @@
 # SwitchML Project
 # @file controller makefile
 # @brief A makefile that calls the protos makefile to generate the needed grpc python files.
+#
+# Build Variables --
+# Format: VARIABLE (type: default value): usage
+#
+# - GRPC_HOME (path: dev_root/third_party/grpc/build): Where to look for the GRPC installation
+#
 
 DEVROOT := $(realpath ../)
 

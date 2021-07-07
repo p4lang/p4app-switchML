@@ -17,13 +17,19 @@
 # @brief Used to build the nccl plugin
 #
 # Compilation flags --
-# Format: FLAG (default value): usage
+# Format: FLAG (type: default value): usage
 #
-# - DEBUG (0): Disable optimizations, add debug symbols, and enable detailed debugging messages.
-# - DPDK (0): Add dpdk backend specific compiler/linker options.
-# - MLX5 (0): Add dpdk backend Connect-x5 specific compiler/linker options.
-# - MLX4 (0): Add dpdk backend Connect-x4 specific compiler/linker options.
-# - RDMA (0): Add rdma backend specific compiler/linker options.
+# - DEBUG (boolean: 0): Disable optimizations, add debug symbols.
+# - DPDK (boolean: 0): Add dpdk backend specific compiler/linker options.
+# - MLX5 (boolean: 0): Add dpdk backend Connect-x5/Connect-x4 specific compiler/linker options.
+# - MLX4 (boolean: 0): Add dpdk backend Connect-x3 specific compiler/linker options.
+# - RDMA (boolean: 0): Add rdma backend specific compiler/linker options.
+# - BUILDDIR (path: dev_root/build): Where to store generated objects/binaries.
+# - SWITCHML_HOME (path: dev_root/build): Where to look for the switchml client library installation.
+# - GRPC_HOME (path: dev_root/third_party/grpc/build): Where to look for the GRPC installation
+# - DPDK_HOME (path: dev_root/third_party/dpdk/build): Where to look for the DPDK installation
+# - CUDA_HOME (path: /usr/local/cuda): Where to look for the CUDA installation
+# - NCCL_HOME (path: /usr/local): Where to look for the patched NCCL installation
 #
 
 # Init path variables
