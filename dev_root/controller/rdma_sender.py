@@ -139,7 +139,7 @@ class RDMASender(Control):
 
         if (packets_per_message &
             (packets_per_message - 1) != 0) or packets_per_message == 0:
-            error_msg = "Number of packets per message ({}) is not a power of 2".format(
+            error_msg = 'Number of packets per message ({}) is not a power of 2'.format(
                 packets_per_message)
             self.log.error(error_msg)
             return (False, error_msg)

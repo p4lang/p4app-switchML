@@ -422,7 +422,12 @@ class Cli(Cmd, object):
         msg = header1_format_string.format(
             '', 'Received', 'Sent') + format_string.format(**header2)
         for id in ids:
-            msg += format_string.format(ID=id, **recvd[id])
+            try:
+                msg += format_string.format(ID=id, **recvd[id])
+            except KeyError:
+                self.log.exception('Error for worker {}: {}'.format(
+                    id, recvd[id]))
+
         self.out(msg)
 
     def do_show_rdma_workers(self, line):
@@ -645,3 +650,11 @@ class Cli(Cmd, object):
         for v in values:
             msg += format_string.format(**v)
         self.out(msg)
+
+    def do_reset_workers(self, line):
+        ''' Reset all workers state '''
+        if line:
+            self.error('Unknown parameter: {}'.format(line))
+        else:
+            self.ctrl.reset_workers()
+            self.out('Workers state reset')

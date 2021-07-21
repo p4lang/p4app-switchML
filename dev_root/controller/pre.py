@@ -106,7 +106,7 @@ class PRE(Control):
             if mgid == k.to_dict()['$MGID']['value']:
                 found = True
         if not found:
-            error_msg = "Multicast group {} not present".format(mgid)
+            error_msg = 'Multicast group {} not present'.format(mgid)
             self.log.error(error_msg)
             return (False, error_msg)
 
@@ -114,7 +114,7 @@ class PRE(Control):
         resp = self.node.entry_get(self.target, flags={'from_hw': False})
         for _, k in resp:
             if k.to_dict()['$MULTICAST_NODE_ID']['value'] == rid:
-                error_msg = "Multicast node {} already present".format(rid)
+                error_msg = 'Multicast node {} already present'.format(rid)
                 self.log.error(error_msg)
                 return (False, error_msg)
 

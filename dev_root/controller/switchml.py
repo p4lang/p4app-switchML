@@ -339,6 +339,26 @@ class SwitchML(object):
 
             del self.multicast_groups[session_id]
 
+    def reset_workers(self):
+        ''' Reset all workers state '''
+        #TODO clear counters
+        self.udp_receiver._clear()
+        self.udp_sender.clear_udp_workers()
+        self.rdma_receiver._clear()
+        self.rdma_sender.clear_rdma_workers()
+        self.bitmap_checker._clear()
+        self.workers_counter._clear()
+        self.exponents._clear()
+        for p in self.processors:
+            p._clear()
+
+        for session_id in self.multicast_groups.copy():
+            if session_id != self.all_ports_mgid:
+                self.clear_multicast_group(session_id)
+
+        # Reset gRPC broadcast/barrier state
+        self.grpc_server.reset()
+
     def clear_rdma_workers(self, session_id):
         ''' Reset UDP workers state for this session '''
         #TODO selectively remove workers (RDMA or UDP) for
@@ -351,6 +371,10 @@ class SwitchML(object):
         self.exponents._clear()
         for p in self.processors:
             p._clear()
+
+        # Multicast groups below 0x8000 are used for sessions
+        # (the mgid is the session id)
+        session_id = session_id % 0x8000
 
         self.clear_multicast_group(session_id)
 
@@ -444,6 +468,10 @@ class SwitchML(object):
         self.exponents._clear()
         for p in self.processors:
             p._clear()
+
+        # Multicast groups below 0x8000 are used for sessions
+        # (the mgid is the session id)
+        session_id = session_id % 0x8000
 
         self.clear_multicast_group(session_id)
 

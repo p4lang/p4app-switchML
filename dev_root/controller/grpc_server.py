@@ -16,6 +16,7 @@ import logging
 
 import asyncio
 import ipaddress
+import threading
 
 import switchml_pb2
 import switchml_pb2_grpc
@@ -48,6 +49,9 @@ class GRPCServer(switchml_pb2_grpc.SessionServicer,
         switchml_pb2_grpc.add_SyncServicer_to_server(self, self._server)
         self._server.add_insecure_port('{}:{}'.format(self.ip, self.port))
 
+        # Lock to synchronize Barrier/Broadcast in case of reset
+        self.lock = threading.RLock()
+
         ## Barrier
         # Incrementing operation id
         self._barrier_op_id = 0
@@ -66,6 +70,20 @@ class GRPCServer(switchml_pb2_grpc.SessionServicer,
 
         # Start gRPC server
         await self._server.start()
+
+    def reset(self):
+        ''' Reset broadcast and barrier state '''
+
+        with self.lock:
+            ## Barrier
+            self._barrier_op_id = 0
+            self._barrier_ctrs = {self._barrier_op_id: 0}
+            self._barrier_events = {self._barrier_op_id: asyncio.Event()}
+
+            ## Broadcast
+            self._bcast_values = []
+            self._bcast_bitmap = []
+            self._bcast_events = []
 
     def run(self, loop, controller):
         ''' Run the gRPC server '''
@@ -93,34 +111,35 @@ class GRPCServer(switchml_pb2_grpc.SessionServicer,
             only when all the requests are received.
         '''
 
-        # Increment counter for this operation
-        self._barrier_ctrs[self._barrier_op_id] += 1
+        with self.lock:
+            # Increment counter for this operation
+            self._barrier_ctrs[self._barrier_op_id] += 1
 
-        if self._barrier_ctrs[self._barrier_op_id] < request.num_workers:
+            if self._barrier_ctrs[self._barrier_op_id] < request.num_workers:
 
-            # Barrier incomplete
-            tmp_id = self._barrier_op_id
+                # Barrier incomplete
+                tmp_id = self._barrier_op_id
 
-            # Wait for completion event
-            await self._barrier_events[tmp_id].wait()
+                # Wait for completion event
+                await self._barrier_events[tmp_id].wait()
 
-            # Decrement counter and delete entries for this operation
-            # once all are released
-            self._barrier_ctrs[tmp_id] -= 1
+                # Decrement counter and delete entries for this operation
+                # once all are released
+                self._barrier_ctrs[tmp_id] -= 1
 
-            if self._barrier_ctrs[tmp_id] == 0:
-                del self._barrier_ctrs[tmp_id]
-                del self._barrier_events[tmp_id]
+                if self._barrier_ctrs[tmp_id] == 0:
+                    del self._barrier_ctrs[tmp_id]
+                    del self._barrier_events[tmp_id]
 
-        else:
-            # This completes the barrier -> release
-            self._barrier_events[self._barrier_op_id].set()
-            self._barrier_ctrs[self._barrier_op_id] -= 1
+            else:
+                # This completes the barrier -> release
+                self._barrier_events[self._barrier_op_id].set()
+                self._barrier_ctrs[self._barrier_op_id] -= 1
 
-            # Create entries for next operation
-            self._barrier_op_id += 1
-            self._barrier_ctrs[self._barrier_op_id] = 0
-            self._barrier_events[self._barrier_op_id] = asyncio.Event()
+                # Create entries for next operation
+                self._barrier_op_id += 1
+                self._barrier_ctrs[self._barrier_op_id] = 0
+                self._barrier_events[self._barrier_op_id] = asyncio.Event()
 
         return switchml_pb2.BarrierResponse()
 
@@ -133,44 +152,45 @@ class GRPCServer(switchml_pb2_grpc.SessionServicer,
             The ones received afterwards return immediately.
         '''
 
-        # Remove old operations
-        for idx in range(len(self._bcast_bitmap)):
-            if all(self._bcast_bitmap[idx]):
-                del self._bcast_bitmap[idx]
-                del self._bcast_values[idx]
-                del self._bcast_events[idx]
+        with self.lock:
+            # Remove old operations
+            for idx in range(len(self._bcast_bitmap)):
+                if all(self._bcast_bitmap[idx]):
+                    del self._bcast_bitmap[idx]
+                    del self._bcast_values[idx]
+                    del self._bcast_events[idx]
 
-        #Scan bitmap
-        idx = -1
-        for idx in range(len(self._bcast_bitmap)):
-            if not self._bcast_bitmap[idx][request.rank]:
-                break
+            #Scan bitmap
+            idx = -1
+            for idx in range(len(self._bcast_bitmap)):
+                if not self._bcast_bitmap[idx][request.rank]:
+                    break
 
-        if idx == -1 or self._bcast_bitmap[idx][request.rank]:
-            # If there is no operation pending with the bit 0 for this worker
-            # then this is a new operation
-            idx += 1
-            self._bcast_bitmap.append(
-                [False for _ in range(request.num_workers)])
-            self._bcast_values.append(None)
-            self._bcast_events.append(asyncio.Event())
+            if idx == -1 or self._bcast_bitmap[idx][request.rank]:
+                # If there is no operation pending with the bit 0 for this worker
+                # then this is a new operation
+                idx += 1
+                self._bcast_bitmap.append(
+                    [False for _ in range(request.num_workers)])
+                self._bcast_values.append(None)
+                self._bcast_events.append(asyncio.Event())
 
-        if request.rank == request.root:
-            # Root: write value and release
-            self._bcast_values[idx] = request.value
-            self._bcast_events[idx].set()
+            if request.rank == request.root:
+                # Root: write value and release
+                self._bcast_values[idx] = request.value
+                self._bcast_events[idx].set()
 
-            # Set bit for this worker
-            self._bcast_bitmap[idx][request.rank] = True
+                # Set bit for this worker
+                self._bcast_bitmap[idx][request.rank] = True
 
-        else:
-            # Non-root
-            if self._bcast_values[idx] is None:
-                # Value not available yet
-                await self._bcast_events[idx].wait()
+            else:
+                # Non-root
+                if self._bcast_values[idx] is None:
+                    # Value not available yet
+                    await self._bcast_events[idx].wait()
 
-            # Set bit for this worker (after waiting)
-            self._bcast_bitmap[idx][request.rank] = True
+                # Set bit for this worker (after waiting)
+                self._bcast_bitmap[idx][request.rank] = True
 
         return switchml_pb2.BroadcastResponse(value=self._bcast_values[idx])
 
