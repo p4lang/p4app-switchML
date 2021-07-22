@@ -374,7 +374,8 @@ class SwitchML(object):
 
         # Multicast groups below 0x8000 are used for sessions
         # (the mgid is the session id)
-        session_id = session_id % 0x8000
+        #TODO session_id = session_id % 0x8000
+        session_id = 0  # Single session supported for now
 
         self.clear_multicast_group(session_id)
 
@@ -416,7 +417,8 @@ class SwitchML(object):
 
         # Multicast groups below 0x8000 are used for sessions
         # (the mgid is the session id)
-        session_id = session_id % 0x8000
+        #TODO session_id = session_id % 0x8000
+        session_id = 0  # Single session supported for now
 
         # Add RDMA receiver/sender entries
         success, error_msg = self.rdma_receiver.add_rdma_worker(
@@ -471,7 +473,8 @@ class SwitchML(object):
 
         # Multicast groups below 0x8000 are used for sessions
         # (the mgid is the session id)
-        session_id = session_id % 0x8000
+        #TODO session_id = session_id % 0x8000
+        session_id = 0  # Single session supported for now
 
         self.clear_multicast_group(session_id)
 
@@ -509,7 +512,8 @@ class SwitchML(object):
 
         # Multicast groups below 0x8000 are used for sessions
         # (the mgid is the session id)
-        session_id = session_id % 0x8000
+        #TODO session_id = session_id % 0x8000
+        session_id = 0  # Single session supported for now
 
         # Add UDP receiver/sender entries
         success, error_msg = self.udp_receiver.add_udp_worker(
