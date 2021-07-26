@@ -16,8 +16,8 @@
 
 /**
  * SwitchML Project
- * @file cpu_exponent_quantizer.h
- * @brief Implements the CpuExponentQuantizer class.
+ * @file cpu_exponent_quantizer_ppp.cc
+ * @brief Implements the CpuExponentQuantizerPPP class.
  */
 
 #include "cpu_exponent_quantizer_ppp.h"

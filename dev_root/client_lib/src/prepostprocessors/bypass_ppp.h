@@ -83,20 +83,20 @@ class BypassPPP : public PrePostProcessor{
      * 
      * @param pkt_id ignored
      * @param entries_ptr ignored
-     * @param exponent_ptr ignored
+     * @param extra_info ignored
      */
     inline void PreprocessSingle(__attribute__((unused)) uint64_t pkt_id, __attribute__((unused)) void* entries_ptr,
-                                 __attribute__((unused)) void* exponent_ptr) override {}
+                                 __attribute__((unused)) void* extra_info) override {}
 
     /**
      * @brief Do nothing
      * 
      * @param pkt_id ignored
      * @param entries_ptr ignored
-     * @param exponent_ptr ignored
+     * @param extra_info ignored
      */
     inline void PostprocessSingle(__attribute__((unused)) uint64_t pkt_id, __attribute__((unused)) void* entries_ptr,
-                                  __attribute__((unused)) void* exponent_ptr) override {}
+                                  __attribute__((unused)) void* extra_info) override {}
 
     /**
      * @brief Do nothing
