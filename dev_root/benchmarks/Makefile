@@ -121,7 +121,7 @@ ifeq ($(CUDA),1)
 	$(CXX) --compile $(CXXFLAGS) $(INC) -I $(CUDA_HOME)/include $(SRCDIR)/allreduce_benchmark/main.cc -o $(AR_OBJDIR)/cpu_main.o
 	# Linking object
 	$(NVCC) -dlink $(AR_OBJDIR)/cpu_main.o -o $(AR_OBJDIR)/gpu_main.o
-	$(CXX) $(CXXFLAGS) $(AR_OBJDIR)/gpu_main.o $(AR_OBJDIR)/cpu_main.o -o $(BINDIR)/allreduce_benchmark 
+	$(CXX) $(CXXFLAGS) $(AR_OBJDIR)/gpu_main.o $(AR_OBJDIR)/cpu_main.o $(LDFLAGS) -o $(BINDIR)/allreduce_benchmark 
 else
 	$(CXX) $(CXXFLAGS) $(INC) $(SRCDIR)/allreduce_benchmark/main.cc $(LDFLAGS) -o $(BINDIR)/allreduce_benchmark 
 endif

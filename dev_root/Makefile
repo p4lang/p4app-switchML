@@ -16,8 +16,8 @@
 # @file Main makefile
 # @brief The makefile to compile and prepare all of the components of the project
 #
-# Compilation flags --
-# Format: FLAG (default value): usage
+# Build Variables --
+# Format: VARIABLE (type: default value): usage
 #
 # - DEBUG (0): Disable optimizations, add debug symbols, and enable detailed debugging messages.
 # - DPDK (0): Compile and include the dpdk backend.

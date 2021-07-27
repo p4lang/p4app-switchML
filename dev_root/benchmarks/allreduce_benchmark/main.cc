@@ -44,6 +44,7 @@ struct TestConfig{
     std::string device;
     uint32_t num_jobs;
     uint32_t num_warmup;
+    bool inplace;
     uint32_t sync_every;
     bool verify;
     float allowed_error_percentage;
@@ -111,6 +112,8 @@ int main(int argc, char* argv[]) {
             "How many timed all reduce jobs should we submit?")
         ("num-warmup-jobs", po::value<uint32_t>(&tconf.num_warmup)->default_value(5),
             "How many untimed all reduce jobs should we submit before the timed ones?")
+        ("inplace", po::value<bool>(&tconf.inplace)->default_value(true), 
+            "Should we use the same memory region as the source and destination for the allreduce operations?")
         ("verify", po::value<bool>(&tconf.verify)->default_value(false), 
             "Verify results to make sure they are as expected")
         ("sync-every", po::value<uint32_t>(&tconf.sync_every)->default_value(1), 
@@ -186,7 +189,7 @@ int main(int argc, char* argv[]) {
     if(tconf.tensor_type == "float") {
         switchml_data_type = switchml::DataType::FLOAT32;
         cpu_src_data = new float[tconf.tensor_numel];
-        cpu_dst_data = new float[tconf.tensor_numel];
+        cpu_dst_data = tconf.inplace ? cpu_src_data : new float[tconf.tensor_numel];
         cpu_ctrl_data = new float[tconf.tensor_numel];
         float* float_cpu_src_data = static_cast<float*>(cpu_src_data);
         float* float_cpu_dst_data = static_cast<float*>(cpu_dst_data);
@@ -216,7 +219,7 @@ int main(int argc, char* argv[]) {
     } else if (tconf.tensor_type == "int32") {
         switchml_data_type = switchml::DataType::INT32;
         cpu_src_data = new int32_t[tconf.tensor_numel];
-        cpu_dst_data = new int32_t[tconf.tensor_numel];
+        cpu_dst_data = tconf.inplace ? cpu_src_data : new int32_t[tconf.tensor_numel];
         cpu_ctrl_data = new int32_t[tconf.tensor_numel];
         int32_t* int32_cpu_src_data = reinterpret_cast<int32_t*>(cpu_src_data);
         int32_t* int32_cpu_dst_data = reinterpret_cast<int32_t*>(cpu_dst_data);
@@ -233,10 +236,12 @@ int main(int argc, char* argv[]) {
                 sign *= -1;
             }
         }
-        // Let's populate the destination with a fixed pattern that we can recognize and know
-        // if it has been changed or not.
-        for(uint64_t i = 0; i < tconf.tensor_numel; i++) {
-            int32_cpu_dst_data[i] = 123456789;
+        if (!tconf.inplace) {
+            // Let's populate the destination with a fixed pattern that we can recognize and know
+            // if it has been changed or not.
+            for(uint64_t i = 0; i < tconf.tensor_numel; i++) {
+                int32_cpu_dst_data[i] = 123456789;
+            }
         }
     } else {
         std::cout << "'" << tconf.tensor_type << "' is not a valid tensor type. Choose from [float, int32]" << std::endl;
@@ -253,7 +258,13 @@ int main(int argc, char* argv[]) {
 #ifdef CUDA
     else if(tconf.device == "gpu") {
         cudaMalloc(&gpu_src_data, tconf.tensor_numel*switchml::DataTypeSize(switchml_data_type));
-        cudaMalloc(&gpu_dst_data, tconf.tensor_numel*switchml::DataTypeSize(switchml_data_type));
+        if(!tconf.inplace) {
+            cudaMalloc(&gpu_dst_data, tconf.tensor_numel*switchml::DataTypeSize(switchml_data_type));
+            cudaMemcpy(gpu_dst_data, cpu_dst_data, tconf.tensor_numel*switchml::DataTypeSize(switchml_data_type),
+                   cudaMemcpyKind::cudaMemcpyHostToDevice);
+        } else {
+            gpu_dst_data = gpu_src_data;
+        }
         cudaMemcpy(gpu_src_data, cpu_src_data, tconf.tensor_numel*switchml::DataTypeSize(switchml_data_type),
                    cudaMemcpyKind::cudaMemcpyHostToDevice);
         src_data = gpu_src_data;
@@ -322,8 +333,10 @@ int main(int argc, char* argv[]) {
         if(tconf.device == "gpu") {
             cudaMemcpy(cpu_src_data, gpu_src_data, tconf.tensor_numel*switchml::DataTypeSize(switchml_data_type),
                     cudaMemcpyKind::cudaMemcpyDeviceToHost);
-            cudaMemcpy(cpu_dst_data, gpu_dst_data, tconf.tensor_numel*switchml::DataTypeSize(switchml_data_type),
-                    cudaMemcpyKind::cudaMemcpyDeviceToHost);
+            if(!tconf.inplace) {
+                cudaMemcpy(cpu_dst_data, gpu_dst_data, tconf.tensor_numel*switchml::DataTypeSize(switchml_data_type),
+                        cudaMemcpyKind::cudaMemcpyDeviceToHost);
+            }
             src_data = cpu_src_data;
             dst_data = cpu_dst_data;
         }
@@ -333,38 +346,46 @@ int main(int argc, char* argv[]) {
             float* float_src_data = static_cast<float*>(src_data);
             float* float_dst_data = static_cast<float*>(dst_data);
             float* float_ctrl_data = static_cast<float*>(cpu_ctrl_data);
-            float output_multiplier = ctx.GetConfig().general_.num_workers;
+            float output_multiplier = tconf.inplace? std::pow(ctx.GetConfig().general_.num_workers, tconf.num_jobs + tconf.num_warmup) : ctx.GetConfig().general_.num_workers;
             for(uint64_t j = 0; j < tconf.tensor_numel && max_num_errors > 0; j++) {
                 float expected_input = float_ctrl_data[j];
                 float expected_output = expected_input * output_multiplier;
-                float error = (expected_input-float_src_data[j]) / (expected_input + std::numeric_limits<float>::epsilon()) * 100; // We add epsilon to avoid running into division by 0
-                if(error > tconf.allowed_error_percentage) {
-                    printf("Verification error at input buffer index [%ld]. Expected %e but found %e (%.2f%% error).\n", j, expected_input, float_src_data[j], error);
-                    max_num_errors--;
-                }
-                error = (expected_output-float_dst_data[j]) / expected_output * 100;
+                
+                float error = (expected_output-float_dst_data[j]) / expected_output * 100;
                 if(error > tconf.allowed_error_percentage) {
                     printf("Verification error at output buffer index [%ld]. Expected %e but found %e (%.2f%% error).\n", j, expected_output, float_dst_data[j], error);
                     max_num_errors--;
+                }
+                if (!tconf.inplace) {
+                    error = (expected_input-float_src_data[j]) / (expected_input + std::numeric_limits<float>::epsilon()) * 100; // We add epsilon to avoid running into division by 0
+                    if(error > tconf.allowed_error_percentage) {
+                        printf("Verification error at input buffer index [%ld]. Expected %e but found %e (%.2f%% error).\n", j, expected_input, float_src_data[j], error);
+                        max_num_errors--;
+                    }
                 }
             }
         } else {
             int32_t* int32_src_data = static_cast<int32_t*>(src_data);
             int32_t* int32_dst_data = static_cast<int32_t*>(dst_data);
             int32_t* int32_ctrl_data = static_cast<int32_t*>(cpu_ctrl_data);
-            int32_t output_multiplier = ctx.GetConfig().general_.num_workers;
+            int32_t output_multiplier = tconf.inplace? std::pow(ctx.GetConfig().general_.num_workers, tconf.num_jobs + tconf.num_warmup) : ctx.GetConfig().general_.num_workers;
+
             for(uint64_t j = 0; j < tconf.tensor_numel && max_num_errors > 0; j++) {
                 int32_t expected_input = int32_ctrl_data[j];
                 int32_t expected_output = expected_input * output_multiplier;
-                float error = (expected_input-int32_src_data[j]) / (float(expected_input) + std::numeric_limits<float>::epsilon()) * 100; // We add epsilon to avoid running into division by 0
-                if(error > tconf.allowed_error_percentage) {
-                    printf("Verification error at input buffer index [%ld]. Expected %d but found %d (%.2f%% error).\n", j, expected_input, int32_src_data[j], error);
-                    max_num_errors--;
-                }
-                error = (expected_output-int32_dst_data[j]) / float(expected_output) * 100;
+
+                float error = (expected_output-int32_dst_data[j]) / float(expected_output) * 100;
                 if(error > tconf.allowed_error_percentage) {
                     printf("Verification error at output buffer index [%ld]. Expected %d but found %d (%.2f%% error).\n", j, expected_output, int32_dst_data[j], error);
                     max_num_errors--;
+                }
+
+                if (!tconf.inplace) {
+                    error = (expected_input-int32_src_data[j]) / (float(expected_input) + std::numeric_limits<float>::epsilon()) * 100; // We add epsilon to avoid running into division by 0
+                    if(error > tconf.allowed_error_percentage) {
+                        printf("Verification error at input buffer index [%ld]. Expected %d but found %d (%.2f%% error).\n", j, expected_input, int32_src_data[j], error);
+                        max_num_errors--;
+                    }
                 }
             }
         }
@@ -414,17 +435,23 @@ int main(int argc, char* argv[]) {
 
     if(tconf.tensor_type == "float") {
         delete [] static_cast<float*>(cpu_src_data);
-        delete [] static_cast<float*>(cpu_dst_data);
+        if(!tconf.inplace) {
+            delete [] static_cast<float*>(cpu_dst_data);
+        }
         delete [] static_cast<float*>(cpu_ctrl_data);
     } else {
         delete [] static_cast<int32_t*>(cpu_src_data);
-        delete [] static_cast<int32_t*>(cpu_dst_data);
+        if(!tconf.inplace) {
+            delete [] static_cast<int32_t*>(cpu_dst_data);
+        }
         delete [] static_cast<int32_t*>(cpu_ctrl_data);
     }
 #ifdef CUDA
     if (tconf.device == "gpu") {
         cudaFree(gpu_src_data);
-        cudaFree(gpu_dst_data);
+        if(!tconf.inplace) {
+            cudaFree(gpu_dst_data);
+        }
     }
 #endif
     stop = true;
