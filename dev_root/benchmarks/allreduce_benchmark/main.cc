@@ -17,7 +17,7 @@
 /**
  * SwitchML Project
  * @file main.cc
- * @brief Implements the allreduce_test example.
+ * @brief Implements the allreduce benchmark.
  */
 
 #include <switchml/context.h>

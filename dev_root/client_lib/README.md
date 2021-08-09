@@ -55,13 +55,33 @@ These are dependencies that are required only for the DPDK backend.
 | libnuma-dev | 2.0.11-2.1ubuntu0.1 |
 | libibverbs-dev | 46mlnx1-1.46101 |
 | libmnl-dev | 1.0.4-2 |
+| autoconf | |
+| libtool | |
+| pkg-config | |
+| cmake | 3.17.0 |
+| libhugetlbfs-dev | |
+| libssl-dev | |
+| linux-headers | |
+| linux-modules | |
 
-On Debian/Ubuntu you can run the following command to install them:
+The cmake version required to compile grpc must be at least 3.13 which is not available by default. 
+Thus you will need to add kitware's repository to your build system by following this [guide](https://apt.kitware.com/).
+Or you can choose to compile cmake from source.
+
+On Debian/Ubuntu you can run the following command to install all dependencies (Assuming you added kitware's repo) :
 
 	sudo apt install -y \
 	libnuma-dev \
-	ibverbs \
-	mnl
+	libibverbs-dev \
+	libhugetlbfs-dev \
+	libmnl-dev \
+	autoconf \
+	libtool \
+	pkg-config \
+	cmake \
+    libssl-dev \
+    linux-headers-$(uname -r) \
+    linux-modules-$(uname -r)
 
 **Important** The DPDK backend requires root access. So whether you are running a benchmark, an example, or using it through pytorch, you must give your application root privileges.
 
@@ -76,15 +96,23 @@ These are dependencies that are required only for the RDMA backend.
 | pkg-config | |
 | libibverbs-dev | 46mlnx1-1.46101 |
 | cmake | 3.17.0 |
+| libhugetlbfs-dev | |
+| libssl-dev | |
 
-On Debian/Ubuntu you can run the following command to install them:
+The cmake version required to compile grpc must be at least 3.13 which is not available by default. 
+Thus you will need to add kitware's repository to your build system by following this [guide](https://apt.kitware.com/).
+Or you can choose to compile cmake from source.
+
+On Debian/Ubuntu you can run the following command to install all dependencies (Assuming you added kitware's repo):
 
 	sudo apt install -y \
 	autoconf \
 	libtool \
 	pkg-config \
 	libibverbs-dev \
+	libhugetlbfs-dev \
 	cmake \
+	libssl-dev
 
 **Important** The RDMA backend requires that you disable ICRC checking on the NIC that you will use. We provide a template for a script that does just that in the [scripts](/dev_root/scripts) directory.
 

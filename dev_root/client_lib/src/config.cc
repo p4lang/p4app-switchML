@@ -188,7 +188,7 @@ void Config::Validate() {
             this->backend_.rdma.msg_numel = new_msg_numel;
         }
         uint64_t outstanding_msgs = this->general_.max_outstanding_packets / num_pkts_per_msg;
-        uint64_t outstanding_msgs_per_wt = outstanding_msgs / this->general_.num_worker_threads;
+        uint64_t outstanding_msgs_per_wt = std::max(1UL, outstanding_msgs / this->general_.num_worker_threads);
         valid_mop = outstanding_msgs_per_wt * this->general_.num_worker_threads * num_pkts_per_msg;
         if(valid_mop != this->general_.max_outstanding_packets) {
             LOG(WARNING) << "general.max_outstanding_packets '" << this->general_.max_outstanding_packets << "' is not divisible by '" 

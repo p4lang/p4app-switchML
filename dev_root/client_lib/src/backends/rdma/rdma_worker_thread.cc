@@ -286,8 +286,8 @@ void RdmaWorkerThread::operator()() {
             // If qpn >= 0 that means a slot has timed out. Retransmit its message..
             if (qpn >= 0) {
                 stats_timeouts += num_pkts_per_msg; 
-                // Post send work request (no recv work request is posted)
-                PostSendWr((uint16_t)qpn);
+                // Post send work request (no recv work request is posted and preprocess is set to false)
+                PostSendWr((uint16_t)qpn, false);
                 stats_total_pkts_sent += num_pkts_per_msg; 
             }
             
@@ -315,7 +315,7 @@ void RdmaWorkerThread::PostRecvWr(uint16_t qpn) {
     this->backend_.GetConnection()->PostRecv(this->queue_pairs_[qpn], &this->recv_wrs_[qpn]);
 }
 
-void RdmaWorkerThread::PostSendWr(uint16_t qpn) {
+void RdmaWorkerThread::PostSendWr(uint16_t qpn, bool preprocess) {
 
     uint64_t msg_size = this->config_.backend_.rdma.msg_numel * RDMA_SWITCH_ELEMENT_SIZE;
     // Point at start of this message's data
@@ -343,15 +343,17 @@ void RdmaWorkerThread::PostSendWr(uint16_t qpn) {
     // information needed by the prepostprocessor (Typically the exponenet).
     this->send_wrs_[qpn].imm_data = this->msg_ids_[qpn] & 0xFFFF;
 
-    // Compute extra info address
-    uint8_t* imm_data = static_cast<uint8_t*>((void*) & this->send_wrs_[qpn].imm_data);
-    uint8_t* extra_info_ptr = imm_data + 2; // Select the third least significant byte.
-
-    // Preprocess the whole message. (This is where loading and quantizing the data is performed)
-    // There is room in the immediate data to preprocess half the message at a time allowing for more
-    // controlled quantization. But we don't need to do that unless we measure losses in accuracy upon
-    // quantizing at the whole message scale.
-    this->ppp_->PreprocessSingle(this->msg_ids_[qpn], message_start, extra_info_ptr);
+    if (preprocess) {    
+        // Compute extra info address
+        uint8_t* imm_data = static_cast<uint8_t*>((void*) & this->send_wrs_[qpn].imm_data);
+        uint8_t* extra_info_ptr = imm_data + 2; // Select the third least significant byte.
+        
+        // Preprocess the whole message. (This is where loading and quantizing the data is performed)
+        // There is room in the immediate data to preprocess half the message at a time allowing for more
+        // controlled quantization. But we don't need to do that unless we measure losses in accuracy upon
+        // quantizing at the whole message scale.
+        this->ppp_->PreprocessSingle(this->msg_ids_[qpn], message_start, extra_info_ptr);
+    }
 
     DVLOG(3) << "Worker thread '" << this->tid_ << "' QP " << qpn << ":0x" << std::hex
             << this->queue_pairs_[qpn]->qp_num << std::dec << " posting write from "
