@@ -211,10 +211,12 @@ int main(int argc, char* argv[]) {
                 sign *= -1;
             }
         }
-        // Let's populate the destination with a fixed pattern that we can recognize and know
-        // it has been changed or not.
-        for(uint64_t i = 0; i < tconf.tensor_numel; i++) {
-            float_cpu_dst_data[i] = 123456789;
+        if(!tconf.inplace) {
+            // Let's populate the destination with a fixed pattern that we can recognize and know
+            // it has been changed or not.
+            for(uint64_t i = 0; i < tconf.tensor_numel; i++) {
+                float_cpu_dst_data[i] = 123456789;
+            }
         }
     } else if (tconf.tensor_type == "int32") {
         switchml_data_type = switchml::DataType::INT32;

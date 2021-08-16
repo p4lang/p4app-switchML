@@ -117,17 +117,17 @@ bool Config::LoadFromFile(std::string path) {
         ifs.open(default_path1.c_str());
         if(!ifs.good()){
             ifs.close();
-
-            char hostname[HOST_NAME_MAX+1];
-            if (gethostname(hostname,sizeof(hostname))!=0) {
-                LOG(FATAL) << "gethostname failed: "+ std::string(strerror(errno));
-            }
-            std::string default_path2 = "switchml-"+std::string(hostname)+".cfg";
+            
+            std::string default_path2 = "switchml.cfg";
             ifs.open(default_path2.c_str());
             if(!ifs.good()){
                 ifs.close();
-                
-                std::string default_path3 = "switchml.cfg";
+
+                char hostname[HOST_NAME_MAX+1];
+                if (gethostname(hostname,sizeof(hostname))!=0) {
+                    LOG(FATAL) << "gethostname failed: "+ std::string(strerror(errno));
+                }
+                std::string default_path3 = "switchml-"+std::string(hostname)+".cfg";
                 ifs.open(default_path3.c_str());
                 if(!ifs.good()){
                     ifs.close();
