@@ -186,13 +186,13 @@ parser IngressParser(
 
     state parse_switchml {
         pkt.extract(hdr.switchml);
+        pkt.extract(hdr.exponents);
         transition parse_values;
     }
 
     state parse_values {
         pkt.extract(hdr.d0);
         pkt.extract(hdr.d1);
-        pkt.extract(hdr.exponents);
         // At this point we know this is a SwitchML packet that wasn't recirculated,
         // so mark it for consumption
         ig_md.switchml_md.setValid();

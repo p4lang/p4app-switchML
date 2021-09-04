@@ -116,11 +116,13 @@ struct value_pair_t {
     value_t second;
 }
 
-typedef bit<16> exponent_t;
+typedef int<8> exponent_t;
 struct exponent_pair_t {
     exponent_t first;
     exponent_t second;
 }
+
+typedef bit<16> msg_id_t;
 
 // RDMA MTU (packet size). Matches ibv_mtu enum in verbs.h
 enum bit<3> packet_size_t {
@@ -209,13 +211,22 @@ header switchml_md_h {
 
     // Number of workers
     num_workers_t num_workers;
+
+    // Exponents
+    exponent_t e0;
+    exponent_t e1;
+
+    // Message ID
+    msg_id_t msg_id;
+
+    // First/last packet of a message
+    bool first_packet;
+    bool last_packet;
 }
 
 // Bridged metadata header for RDMA
 @flexible
 header switchml_rdma_md_h {
-    bool first_packet;
-    bool last_packet;
     bit<64> rdma_addr;
 }
 

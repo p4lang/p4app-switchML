@@ -56,7 +56,7 @@ control UDPReceiver(
         receive_counter.count();
 
         // Bitmap representation for this worker
-        ig_md.worker_bitmap           = worker_bitmap;
+        ig_md.worker_bitmap = worker_bitmap;
         ig_md.switchml_md.num_workers = num_workers;
 
         // Group ID for this job
@@ -72,14 +72,23 @@ control UDPReceiver(
         ig_md.switchml_md.tsi = hdr.switchml.tsi;
         ig_md.switchml_md.job_number = hdr.switchml.job_number;
 
+        // Move the SwitchML set bit in the MSB to the LSB. TODO move set bit to MSB
+        ig_md.switchml_md.pool_index = hdr.switchml.pool_index[13:0] ++ hdr.switchml.pool_index[15:15];
+
+        // Mark packet as single-packet message since it's the UDP protocol
+        ig_md.switchml_md.first_packet = true;
+        ig_md.switchml_md.last_packet = true;
+
+        // Exponents
+        ig_md.switchml_md.e0 = hdr.exponents.e0;
+        ig_md.switchml_md.e1 = hdr.exponents.e1;
+
         // Get rid of headers we don't want to recirculate
         hdr.ethernet.setInvalid();
         hdr.ipv4.setInvalid();
         hdr.udp.setInvalid();
         hdr.switchml.setInvalid();
-
-        // Move the SwitchML set bit in the MSB to the LSB. TODO move set bit to MSB
-        ig_md.switchml_md.pool_index = hdr.switchml.pool_index[13:0] ++ hdr.switchml.pool_index[15:15];
+        hdr.exponents.setInvalid();
     }
 
     table receive_udp {

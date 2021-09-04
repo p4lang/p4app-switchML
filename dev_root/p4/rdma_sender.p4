@@ -178,7 +178,7 @@ control RDMASender(
 
     action set_immediate() {
         hdr.ib_immediate.setValid();
-        hdr.ib_immediate.immediate = 0x12345678; // TODO: Exponents in immediate
+        hdr.ib_immediate.immediate = eg_md.switchml_md.msg_id +++ (bit<8>)eg_md.switchml_md.e0 +++ (bit<8>)eg_md.switchml_md.e1;
     }
 
     action set_rdma() {
@@ -186,6 +186,14 @@ control RDMASender(
         hdr.ib_reth.r_key = rdma_rkey;
         hdr.ib_reth.len = eg_md.switchml_md.tsi;
         hdr.ib_reth.addr = eg_md.switchml_rdma_md.rdma_addr;
+    }
+
+    action set_first() {
+        set_opcode_common(ib_opcode_t.UC_RDMA_WRITE_FIRST);
+        set_rdma();
+
+        hdr.udp.length = hdr.udp.length + (bit<16>) hdr.ib_reth.minSizeInBytes();
+        hdr.ipv4.total_len = hdr.ipv4.total_len + (bit<16>) hdr.ib_reth.minSizeInBytes();
     }
 
     action set_middle() {
@@ -201,14 +209,6 @@ control RDMASender(
         hdr.ipv4.total_len = hdr.ipv4.total_len + (bit<16>) hdr.ib_immediate.minSizeInBytes();
     }
 
-    action set_first() {
-        set_opcode_common(ib_opcode_t.UC_RDMA_WRITE_FIRST);
-        set_rdma();
-
-        hdr.udp.length = hdr.udp.length + (bit<16>) hdr.ib_reth.minSizeInBytes();
-        hdr.ipv4.total_len = hdr.ipv4.total_len + (bit<16>) hdr.ib_reth.minSizeInBytes();
-    }
-
     action set_only_immediate() {
         set_opcode_common(ib_opcode_t.UC_RDMA_WRITE_ONLY_IMMEDIATE);
         set_rdma();
@@ -220,8 +220,8 @@ control RDMASender(
 
     table set_opcodes {
         key = {
-            eg_md.switchml_rdma_md.first_packet : exact;
-            eg_md.switchml_rdma_md.last_packet : exact;
+            eg_md.switchml_md.first_packet : exact;
+            eg_md.switchml_md.last_packet : exact;
         }
         actions = {
             set_first;

@@ -124,8 +124,8 @@ control RDMAReceiver(
         packet_size_t packet_size) {
 
         // Bitmap representation for this worker
-        ig_md.worker_bitmap   = worker_bitmap;
-        ig_md.switchml_md.num_workers     = num_workers;
+        ig_md.worker_bitmap = worker_bitmap;
+        ig_md.switchml_md.num_workers = num_workers;
 
         // Group ID for this job
         ig_md.switchml_md.mgid = mgid;
@@ -137,23 +137,93 @@ control RDMAReceiver(
         ig_md.switchml_rdma_md.rdma_addr = hdr.ib_reth.addr;
         ig_md.switchml_md.tsi = hdr.ib_reth.len;
 
+        // Record packet size for use in recirculation
+        ig_md.switchml_md.packet_size = packet_size;
+        ig_md.switchml_md.recirc_port_selector = (queue_pair_index_t) QP_INDEX;
+
         // Get rid of headers we don't want to recirculate
         hdr.ethernet.setInvalid();
         hdr.ipv4.setInvalid();
         hdr.udp.setInvalid();
         hdr.ib_bth.setInvalid();
         hdr.ib_reth.setInvalid();
-        hdr.ib_immediate.setInvalid();
-
-        // Record packet size for use in recirculation
-        ig_md.switchml_md.packet_size = packet_size;
-        ig_md.switchml_md.recirc_port_selector = (queue_pair_index_t) QP_INDEX;
 
         rdma_receive_counter.count();
     }
 
     action assign_pool_index(bit<32> result) {
         ig_md.switchml_md.pool_index = result[14:0];
+    }
+
+    action process_immediate() {
+        ig_md.switchml_md.msg_id = hdr.ib_immediate.immediate[31:16];
+        ig_md.switchml_md.e0 = (exponent_t)hdr.ib_immediate.immediate[15:8];
+        ig_md.switchml_md.e1 = (exponent_t)hdr.ib_immediate.immediate[7:0];
+        hdr.ib_immediate.setInvalid();
+    }
+
+    action only_packet(
+        MulticastGroupId_t mgid,
+        worker_type_t worker_type,
+        worker_id_t worker_id,
+        num_workers_t num_workers,
+        worker_bitmap_t worker_bitmap,
+        packet_size_t packet_size) {
+
+        // Set common fields
+        set_bitmap(mgid, worker_type, worker_id,  num_workers, worker_bitmap, packet_size);
+        ig_md.switchml_md.first_packet = true;
+        ig_md.switchml_md.last_packet  = true;
+
+        // Reset sequence number
+        return_t result = receiver_reset_action.execute(QP_INDEX);
+
+        assign_pool_index(result);
+
+        // This is an only packet, so there can be no sequence number violation.
+        // Don't drop the packet
+
+        // A message has arrived, since this is an only packet
+        message_possibly_received = true;
+        sequence_violation = (bool) result[31:31];
+    }
+
+    action only_packet_with_immediate(
+        MulticastGroupId_t mgid,
+        worker_type_t worker_type,
+        worker_id_t worker_id,
+        num_workers_t num_workers,
+        worker_bitmap_t worker_bitmap,
+        packet_size_t packet_size) {
+
+        process_immediate();
+        only_packet(mgid, worker_type, worker_id,  num_workers, worker_bitmap, packet_size);
+    }
+
+    action first_packet(
+        MulticastGroupId_t mgid,
+        worker_type_t worker_type,
+        worker_id_t worker_id,
+        num_workers_t num_workers,
+        worker_bitmap_t worker_bitmap,
+        packet_size_t packet_size) {
+
+        // Set common fields
+        set_bitmap(mgid, worker_type, worker_id,  num_workers, worker_bitmap, packet_size);
+        ig_md.switchml_md.first_packet = true;
+        ig_md.switchml_md.last_packet  = false;
+
+        // Reset sequence number
+        return_t result = receiver_reset_action.execute(QP_INDEX);
+
+        assign_pool_index(result);
+
+        // This is a first packet, so there can be no sequence number violation
+        // Don't drop the packet.
+
+        // A message has not yet arrived, since this is a first packet
+        message_possibly_received = false;
+        sequence_violation = (bool) result[31:31];
     }
 
     action middle_packet(
@@ -166,8 +236,8 @@ control RDMAReceiver(
 
         // Set common fields
         set_bitmap(mgid, worker_type, worker_id,  num_workers, worker_bitmap, packet_size);
-        ig_md.switchml_rdma_md.first_packet = false;
-        ig_md.switchml_rdma_md.last_packet  = false;
+        ig_md.switchml_md.first_packet = false;
+        ig_md.switchml_md.last_packet  = false;
 
         // Process sequence number
         return_t result = receiver_increment_action.execute(QP_INDEX);
@@ -192,8 +262,8 @@ control RDMAReceiver(
 
         // Set common fields
         set_bitmap(mgid, worker_type, worker_id,  num_workers, worker_bitmap, packet_size);
-        ig_md.switchml_rdma_md.first_packet = false;
-        ig_md.switchml_rdma_md.last_packet  = true;
+        ig_md.switchml_md.first_packet = false;
+        ig_md.switchml_md.last_packet  = true;
 
         // Process sequence number
         return_t result = receiver_increment_action.execute(QP_INDEX);
@@ -208,7 +278,7 @@ control RDMAReceiver(
         sequence_violation = (bool) result[31:31];
     }
 
-    action first_packet(
+    action last_packet_with_immediate(
         MulticastGroupId_t mgid,
         worker_type_t worker_type,
         worker_id_t worker_id,
@@ -216,48 +286,8 @@ control RDMAReceiver(
         worker_bitmap_t worker_bitmap,
         packet_size_t packet_size) {
 
-        // Set common fields
-        set_bitmap(mgid, worker_type, worker_id,  num_workers, worker_bitmap, packet_size);
-        ig_md.switchml_rdma_md.first_packet = true;
-        ig_md.switchml_rdma_md.last_packet  = false;
-
-        // Reset sequence number
-        return_t result = receiver_reset_action.execute(QP_INDEX);
-
-        assign_pool_index(result);
-
-        // This is a first packet, so there can be no sequence number violation
-        // Don't drop the packet.
-
-        // A message has not yet arrived, since this is a first packet
-        message_possibly_received = false;
-        sequence_violation = (bool) result[31:31];
-    }
-
-    action only_packet(
-        MulticastGroupId_t mgid,
-        worker_type_t worker_type,
-        worker_id_t worker_id,
-        num_workers_t num_workers,
-        worker_bitmap_t worker_bitmap,
-        packet_size_t packet_size) {
-
-        // Set common fields
-        set_bitmap(mgid, worker_type, worker_id,  num_workers, worker_bitmap, packet_size);
-        ig_md.switchml_rdma_md.first_packet = true;
-        ig_md.switchml_rdma_md.last_packet  = true;
-
-        // Reset sequence number
-        return_t result = receiver_reset_action.execute(QP_INDEX);
-
-        assign_pool_index(result);
-
-        // This is an only packet, so there can be no sequence number violation.
-        // Don't drop the packet
-
-        // A message has arrived, since this is an only packet
-        message_possibly_received = true;
-        sequence_violation = (bool) result[31:31];
+        process_immediate();
+        last_packet(mgid, worker_type, worker_id,  num_workers, worker_bitmap, packet_size);
     }
 
     // This is a regular packet; just forward
@@ -265,7 +295,6 @@ control RDMAReceiver(
         ig_md.switchml_md.packet_type = packet_type_t.IGNORE;
         rdma_receive_counter.count();
     }
-
 
     // The goal for this component is to receive a RoCEv2 RDMA UC packet
     // stream, and to compute the correct slot ID for each packet.
@@ -293,9 +322,11 @@ control RDMAReceiver(
         }
         actions = {
             only_packet;
+            only_packet_with_immediate;
             first_packet;
             middle_packet;
             last_packet;
+            last_packet_with_immediate;
             @defaultonly forward;
         }
         const default_action = forward;

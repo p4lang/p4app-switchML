@@ -115,18 +115,20 @@ class RDMAReceiver(Control):
         worker_mask = 1 << worker_id
 
         # add entry for each opcode for each worker
-        for opcode, action in [(RDMAOpcode.UC_RDMA_WRITE_FIRST,
-                                'Ingress.rdma_receiver.first_packet'),
-                               (RDMAOpcode.UC_RDMA_WRITE_MIDDLE,
-                                'Ingress.rdma_receiver.middle_packet'),
-                               (RDMAOpcode.UC_RDMA_WRITE_LAST,
-                                'Ingress.rdma_receiver.last_packet'),
-                               (RDMAOpcode.UC_RDMA_WRITE_ONLY,
-                                'Ingress.rdma_receiver.only_packet'),
-                               (RDMAOpcode.UC_RDMA_WRITE_LAST_IMMEDIATE,
-                                'Ingress.rdma_receiver.last_packet'),
-                               (RDMAOpcode.UC_RDMA_WRITE_ONLY_IMMEDIATE,
-                                'Ingress.rdma_receiver.only_packet')]:
+        for opcode, action in [
+            (RDMAOpcode.UC_RDMA_WRITE_ONLY,
+             'Ingress.rdma_receiver.only_packet'),
+            (RDMAOpcode.UC_RDMA_WRITE_ONLY_IMMEDIATE,
+             'Ingress.rdma_receiver.only_packet_with_immediate'),
+            (RDMAOpcode.UC_RDMA_WRITE_FIRST,
+             'Ingress.rdma_receiver.first_packet'),
+            (RDMAOpcode.UC_RDMA_WRITE_MIDDLE,
+             'Ingress.rdma_receiver.middle_packet'),
+            (RDMAOpcode.UC_RDMA_WRITE_LAST,
+             'Ingress.rdma_receiver.last_packet'),
+            (RDMAOpcode.UC_RDMA_WRITE_LAST_IMMEDIATE,
+             'Ingress.rdma_receiver.last_packet_with_immediate')
+        ]:
 
             # Switch virtual queue-pairs
             # lower 16 bits: QP numbers for one worker

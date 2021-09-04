@@ -118,10 +118,6 @@ control NextStepSelector(
     action broadcast() {
         hdr.d1.setInvalid();
 
-        // Set the switch as the source MAC address
-        hdr.ethernet.src_addr = hdr.ethernet.dst_addr;
-        // Destination address will be filled in egress pipe
-
         // Send to multicast group; egress will fill in destination IP and MAC address
         ig_tm_md.mcast_grp_a = ig_md.switchml_md.mgid;
         ig_tm_md.level1_exclusion_id = null_level1_exclusion_id; // don't exclude any nodes

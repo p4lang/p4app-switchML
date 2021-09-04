@@ -98,8 +98,7 @@ class SwitchML(object):
         try:
             interface = gc.ClientInterface('{}:{}'.format(bfrt_ip, bfrt_port),
                                            client_id=0,
-                                           device_id=self.dev,
-                                           is_master=True)
+                                           device_id=self.dev)
         except RuntimeError as re:
             msg = re.args[0] % re.args[1]
             self.critical_error(msg)

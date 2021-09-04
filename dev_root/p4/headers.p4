@@ -114,9 +114,10 @@ header ib_icrc_h {
     bit<32> icrc;
 }
 
-// 2-byte exponent header (assuming exponent_t is bit<16>)
+// Exponent headers
 header exponents_h {
     exponent_t e0;
+    exponent_t e1;
 }
 
 // 128-byte data header
@@ -164,13 +165,13 @@ struct header_t {
     icmp_h         icmp;
     udp_h          udp;
     switchml_h     switchml;
+    exponents_h    exponents;
     ib_bth_h       ib_bth;
     ib_reth_h      ib_reth;
     ib_immediate_h ib_immediate;
     // Two 128-byte data headers to support harvesting 256 bytes with recirculation
     data_h         d0;
     data_h         d1;
-    exponents_h    exponents;
     ib_icrc_h      ib_icrc;
 }
 

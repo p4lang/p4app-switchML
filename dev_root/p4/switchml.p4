@@ -137,8 +137,13 @@ control Ingress(
             if ((packet_type_underlying_t) ig_md.switchml_md.packet_type >=
                 (packet_type_underlying_t) packet_type_t.CONSUME0) { // all consume or harvest types
 
-                // Update max exponents
-                exponents.apply(hdr.exponents.e0, hdr.exponents.e0, hdr.exponents.e0, _, hdr, ig_md);
+                // Update/read exponents if this is a packet with exponents
+                if (ig_md.switchml_md.last_packet) {
+                    exponents.apply(
+                        ig_md.switchml_md.e0, ig_md.switchml_md.e1,
+                        ig_md.switchml_md.e0, ig_md.switchml_md.e1,
+                        ig_md);
+                }
 
                 // Aggregate values
                 value00.apply(hdr.d0.d00, hdr.d1.d00, hdr.d0.d00, hdr.d1.d00, ig_md.switchml_md);

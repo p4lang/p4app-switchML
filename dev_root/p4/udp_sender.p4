@@ -88,6 +88,11 @@ control UDPSender(
         // Pool set bit
         hdr.switchml.pool_index[15:15] = eg_md.switchml_md.pool_index[0:0];
 
+        // Exponents
+        hdr.exponents.setValid();
+        hdr.exponents.e0 = eg_md.switchml_md.e0;
+        hdr.exponents.e1 = eg_md.switchml_md.e1;
+
         // Count send
         send_counter.count();
     }

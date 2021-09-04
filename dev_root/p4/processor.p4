@@ -79,10 +79,6 @@ control Processor(
         value1_out = read1_register_action.execute(switchml_md.pool_index);
     }
 
-    // If bitmap_before is 0 and type is CONSUME0, write values and read second value
-    // If bitmap_before is not zero and type is CONSUME0, add values and read second value
-    // If map_result is not zero and type is CONSUME0, just read first value
-    // If type is HARVEST, read second value
     table sum {
         key = {
             switchml_md.worker_bitmap_before : ternary;
@@ -98,24 +94,24 @@ control Processor(
         }
         size = 20;
         const entries = {
-            // If bitmap_before is all 0's and type is CONSUME0, this is the first packet for slot,
+            // If bitmap_before is all 0's and type is CONSUME, this is the first packet for slot,
             // so just write values and read second value
             (32w0,    _, packet_type_t.CONSUME0) : write_read1_action();
             (32w0,    _, packet_type_t.CONSUME1) : write_read1_action();
             (32w0,    _, packet_type_t.CONSUME2) : write_read1_action();
             (32w0,    _, packet_type_t.CONSUME3) : write_read1_action();
-            // If bitmap_before is nonzero, map_result is all 0's, and type is CONSUME0,
+            // If bitmap_before is nonzero, map_result is all 0's, and type is CONSUME,
             // compute sum of values and read second value
             (   _, 32w0, packet_type_t.CONSUME0) : sum_read1_action();
             (   _, 32w0, packet_type_t.CONSUME1) : sum_read1_action();
             (   _, 32w0, packet_type_t.CONSUME2) : sum_read1_action();
             (   _, 32w0, packet_type_t.CONSUME3) : sum_read1_action();
-            // If bitmap_before is nonzero, map_result is nonzero, and type is CONSUME0,
-            // this is a retransmission, so just read first value
-            (   _,    _, packet_type_t.CONSUME0) : read0_action();
-            (   _,    _, packet_type_t.CONSUME1) : read0_action();
-            (   _,    _, packet_type_t.CONSUME2) : read0_action();
-            (   _,    _, packet_type_t.CONSUME3) : read0_action();
+            // If bitmap_before is nonzero, map_result is nonzero, and type is CONSUME,
+            // this is a retransmission, so just read second value
+            (   _,    _, packet_type_t.CONSUME0) : read1_action();
+            (   _,    _, packet_type_t.CONSUME1) : read1_action();
+            (   _,    _, packet_type_t.CONSUME2) : read1_action();
+            (   _,    _, packet_type_t.CONSUME3) : read1_action();
             // If type is HARVEST, read one set of values based on sequence
             (   _,    _, packet_type_t.HARVEST0) : read1_action(); // extract data1 slice in pipe 3
             (   _,    _, packet_type_t.HARVEST1) : read0_action(); // extract data0 slice in pipe 3
@@ -126,7 +122,7 @@ control Processor(
             (   _,    _, packet_type_t.HARVEST6) : read1_action(); // extract data1 slice in pipe 0
             (   _,    _, packet_type_t.HARVEST7) : read0_action(); // last pass; extract data0 slice in pipe 0
         }
-        // if none of the above are true, do nothing.
+        // If none of the above are true, do nothing.
         const default_action = NoAction;
     }
 
