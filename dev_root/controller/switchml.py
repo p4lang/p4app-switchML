@@ -137,19 +137,26 @@ class SwitchML(object):
             # Enable loopback on PktGen ports
             pktgen_ports = [192, 448]
 
-            print('\nYou must \'remove\' the ports in the BF ucli:\n')
-            for p in pktgen_ports:
-                print('    bf-sde> dvm rmv_port 0 {}'.format(p))
-            input('\nPress Enter to continue...')
+            if not self.ports.get_loopback_mode_pktgen(pktgen_ports):
+                # Not all PktGen ports are in loopback mode
 
-            if not self.ports.set_loopback_mode_pktgen(pktgen_ports):
-                self.critical_error(
-                    'Failed setting front panel ports in loopback mode')
+                print('\nYou must \'remove\' the ports in the BF ucli:\n')
+                for p in pktgen_ports:
+                    print('    bf-sde> dvm rmv_port 0 {}'.format(p))
+                input('\nPress Enter to continue...')
 
-            print('\nAdd the ports again:\n')
-            for p in pktgen_ports:
-                print('    bf-sde> dvm add_port 0 {} 100 0'.format(p))
-            input('\nPress Enter to continue...')
+                if not self.ports.set_loopback_mode_pktgen(pktgen_ports):
+                    self.critical_error(
+                        'Failed setting front panel ports in loopback mode')
+
+                print('\nAdd the ports again:\n')
+                for p in pktgen_ports:
+                    print('    bf-sde> dvm add_port 0 {} 100 0'.format(p))
+                input('\nPress Enter to continue...')
+
+                if not self.ports.get_loopback_mode_pktgen(pktgen_ports):
+                    self.critical_error(
+                        'Front panel ports are not in loopback mode')
 
             # Packet Replication Engine table
             self.pre = PRE(self.target, gc, self.bfrt_info, self.cpu_port)

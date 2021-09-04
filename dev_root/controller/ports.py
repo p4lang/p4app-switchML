@@ -359,20 +359,6 @@ class Ports(object):
             Returns True on success, False otherwise.
         '''
 
-        # Check port state
-        resp = self.pktgen_port_cfg_table.entry_get(self.target, [
-            self.pktgen_port_cfg_table.make_key(
-                [self.gc.KeyTuple('dev_port', port)]) for port in ports
-        ], {'from_hw': False})
-
-        msg = 'Ports recirculation status before:'
-        for v, k in resp:
-            v = v.to_dict()
-            k = k.to_dict()
-            msg += ' {}:{}'.format(k['dev_port']['value'],
-                                   v['recirculation_enable'])
-        self.log.debug(msg)
-
         try:
             self.pktgen_port_cfg_table.entry_add(self.target, [
                 self.pktgen_port_cfg_table.make_key(
@@ -385,19 +371,29 @@ class Ports(object):
             self.log.exception(e)
             return False
         else:
-            self.log.info('PktGen ports {} in loopback mode'.format(ports))
+            self.log.info('PktGen ports {} set in loopback mode'.format(ports))
 
-        # Check port state
+    def get_loopback_mode_pktgen(self, ports=[192, 448]):
+        ''' Gets loopback mode status of pktgen ports.
+
+            Keyword arguments:
+                ports -- list of pktgen dev port numbers (default [192,448])
+
+            Returns True if all ports are in loopback mode, False otherwise.
+        '''
+
+        # Check ports state
         resp = self.pktgen_port_cfg_table.entry_get(self.target, [
             self.pktgen_port_cfg_table.make_key(
                 [self.gc.KeyTuple('dev_port', port)]) for port in ports
         ], {'from_hw': False})
 
-        msg = 'Ports recirculation status after:'
+        loopback_mode = True
         for v, k in resp:
             v = v.to_dict()
             k = k.to_dict()
-            msg += ' {}:{}'.format(k['dev_port']['value'],
-                                   v['recirculation_enable'])
-        self.log.debug(msg)
-        return True
+
+            if not v['recirculation_enable']:
+                loopback_mode = False
+                break
+        return loopback_mode
