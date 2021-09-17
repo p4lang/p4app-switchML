@@ -333,8 +333,8 @@ void DpdkWorkerThread::operator()() {
                 DVLOG(3) << "Worker thread '" << this->tid_ << "' Accepted packet short_job_id=" << (int) switchml_hdr->short_job_id
                     << " pkt_id=" << pkt_id;
 
-                DpdkBackend::DpdkPacketElement* entries_ptr = reinterpret_cast<DpdkBackend::DpdkPacketElement*>(switchml_hdr+1);
-                void* extra_info_ptr = entries_ptr + genconf.packet_numel;
+                int16_t* extra_info_ptr = reinterpret_cast<int16_t*>(switchml_hdr+1);
+                DpdkBackend::DpdkPacketElement* entries_ptr = reinterpret_cast<DpdkBackend::DpdkPacketElement*>(extra_info_ptr+1);
                 this->ppp_->PostprocessSingle(pkt_id, entries_ptr, extra_info_ptr);
 
                 num_received_pkts++;

@@ -158,13 +158,18 @@ void Config::Validate() {
         << "The chosen max_outstanding_packets must be at least equal to num_worker_threads to let each worker thread send at least 1 packet";
 
     uint64_t outstanding_pkts_per_wt = this->general_.max_outstanding_packets / this->general_.num_worker_threads;
-    uint64_t valid_mop = outstanding_pkts_per_wt*this->general_.num_worker_threads;
-    if (valid_mop != this->general_.max_outstanding_packets) {
+    if (this->general_.max_outstanding_packets % this->general_.num_worker_threads != 0) {
+        uint64_t new_mop = outstanding_pkts_per_wt*this->general_.num_worker_threads;
+        uint64_t new_mop2 = (outstanding_pkts_per_wt + 1)*this->general_.num_worker_threads;
+        // Choose the new mop that minimizes the difference. Regardless if its bigger or smaller than the current mop.
+        if(this->general_.max_outstanding_packets - new_mop > new_mop2 - this->general_.max_outstanding_packets){
+            new_mop = new_mop2;
+        }
         LOG(WARNING) << "general.max_outstanding_packets '" << this->general_.max_outstanding_packets << "' is not divisible by general.num_worker_threads '"
             << this->general_.num_worker_threads << ".\n"
-            << "Setting it to '" << valid_mop << "'."
+            << "Setting it to '" << new_mop << "'."
         ;
-        this->general_.max_outstanding_packets = valid_mop;
+        this->general_.max_outstanding_packets = new_mop;
     }
 
 #ifdef DPDK
@@ -187,17 +192,22 @@ void Config::Validate() {
                 << this->general_.packet_numel << "'. We will set rdma.msg_numel to '" << new_msg_numel << "'.";
             this->backend_.rdma.msg_numel = new_msg_numel;
         }
-        uint64_t outstanding_msgs = this->general_.max_outstanding_packets / num_pkts_per_msg;
-        uint64_t outstanding_msgs_per_wt = std::max(1UL, outstanding_msgs / this->general_.num_worker_threads);
-        valid_mop = outstanding_msgs_per_wt * this->general_.num_worker_threads * num_pkts_per_msg;
-        if(valid_mop != this->general_.max_outstanding_packets) {
+        uint64_t outstanding_msgs_per_wt = std::max(1UL, this->general_.max_outstanding_packets / (this->general_.num_worker_threads * num_pkts_per_msg));
+        if(this->general_.max_outstanding_packets % (this->general_.num_worker_threads * num_pkts_per_msg) != 0 ) {
+            uint64_t new_mop = outstanding_msgs_per_wt * this->general_.num_worker_threads * num_pkts_per_msg;
+            uint64_t new_mop2 = (outstanding_msgs_per_wt+1) * this->general_.num_worker_threads * num_pkts_per_msg;
+            // Choose the new mop that minimizes the difference. Regardless if its bigger or smaller than the current mop.
+            if(this->general_.max_outstanding_packets - new_mop > new_mop2 - this->general_.max_outstanding_packets){
+                new_mop = new_mop2;
+                outstanding_msgs_per_wt++;
+            }
             LOG(WARNING) << "general.max_outstanding_packets '" << this->general_.max_outstanding_packets << "' is not divisible by '" 
                 << this->general_.num_worker_threads * num_pkts_per_msg 
                 << "' (number of packets per message * number of worker threads).\n"
-                << ". We will set general.max_outstanding_packets to '" << valid_mop << "' to have exactly " << outstanding_msgs_per_wt 
+                << ". We will set general.max_outstanding_packets to '" << new_mop << "' to have exactly " << outstanding_msgs_per_wt 
                 << " outstanding messages per worker thread."
             ;
-            this->general_.max_outstanding_packets = valid_mop;
+            this->general_.max_outstanding_packets = new_mop;
         }
     }
 #endif

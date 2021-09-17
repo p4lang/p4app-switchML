@@ -110,10 +110,6 @@ default: allreduce_benchmark
 
 allreduce_benchmark: $(BINDIR)/allreduce_benchmark
 
-
-$(BINDIR)/hello_world: $(BINDIR)
-	$(CXX) $(CXXFLAGS) $(INC) $(SRCDIR)/hello_world/main.cc $(LDFLAGS) -o $(BINDIR)/hello_world 
-
 $(BINDIR)/allreduce_benchmark: $(BINDIR) $(OBJDIR)
 ifeq ($(CUDA),1)
 	mkdir -p $(AR_OBJDIR)

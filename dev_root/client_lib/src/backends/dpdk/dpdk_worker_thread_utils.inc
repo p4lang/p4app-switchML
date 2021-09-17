@@ -129,8 +129,8 @@ void BuildPacket(rte_mbuf* mbuf, JobId job_id, uint32_t pkt_id,
     switchml_pkt_hdr->short_job_id = job_id; // Select the 8 LSBs of the job id
 
     // Preprocess the packet (Copying/quantizing is done here)
-    DpdkBackend::DpdkPacketElement* entries_ptr = reinterpret_cast<DpdkBackend::DpdkPacketElement*>(switchml_pkt_hdr+1);
-    void* extra_info_ptr = entries_ptr + packet_numel;
+    int16_t* extra_info_ptr = reinterpret_cast<int16_t*>(switchml_pkt_hdr+1);
+    DpdkBackend::DpdkPacketElement* entries_ptr = reinterpret_cast<DpdkBackend::DpdkPacketElement*>(extra_info_ptr+1);
     ppp->PreprocessSingle(pkt_id, entries_ptr, extra_info_ptr);
 }
 
@@ -172,8 +172,8 @@ void ReusePacket(rte_mbuf* mbuf, uint32_t pkt_id, uint64_t packet_numel,
     switchml_pkt_hdr->switch_pool_index = rte_cpu_to_be_16(switch_pool_index);
 
     // Preprocess the packet (Copying/quantizing is done here)
-    DpdkBackend::DpdkPacketElement* entries_ptr = reinterpret_cast<DpdkBackend::DpdkPacketElement*>(switchml_pkt_hdr+1);
-    void* extra_info_ptr = entries_ptr + packet_numel;
+    int16_t* extra_info_ptr = reinterpret_cast<int16_t*>(switchml_pkt_hdr+1);
+    DpdkBackend::DpdkPacketElement* entries_ptr = reinterpret_cast<DpdkBackend::DpdkPacketElement*>(extra_info_ptr+1);
     ppp->PreprocessSingle(pkt_id, entries_ptr, extra_info_ptr);
 }
 

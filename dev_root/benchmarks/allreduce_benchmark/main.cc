@@ -162,7 +162,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     if (tconf.allowed_error_percentage < 0) {
-        std::cout << "The allowed error percentage must be greater than or equal to 0. '" << tconf.num_jobs << "' is not valid" << std::endl;
+        std::cout << "The allowed error percentage must be greater than or equal to 0. '" << tconf.allowed_error_percentage << "' is not valid" << std::endl;
         exit(EXIT_FAILURE);
     }
 

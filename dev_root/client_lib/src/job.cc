@@ -37,7 +37,9 @@ Job::Job(Tensor tensor, JobType job_type, ExtraJobInfo extra_job_info) :
 void Job::WaitToComplete() {
     std::unique_lock<std::mutex> lock(this->access_mutex_);
 
-    this->job_finished_event_.wait(lock);
+    this->job_finished_event_.wait(lock, [this] {
+        return this->job_status_ == JobStatus::FAILED || this->job_status_ == JobStatus::FINISHED;
+    });
 }
 
 JobStatus Job::GetJobStatus() {

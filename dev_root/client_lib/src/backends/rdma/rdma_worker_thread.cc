@@ -223,19 +223,19 @@ void RdmaWorkerThread::operator()() {
                     uint16_t received_short_msg_id = completions[i].imm_data & 0xFFFF;
                     uint16_t expected_short_msg_id = msg_ids_[qpn] & 0xFFFF;
 
-                    // TODO: Is this the message that we are expecting from this qpn?
-                    // if(received_short_msg_id != expected_short_msg_id) {
-                    //     if(received_short_msg_id < expected_short_msg_id && received_short_msg_id % batch_num_msgs == expected_short_msg_id % batch_num_msgs) {
-                    //         DVLOG(3) << "Worker thread '" << this->tid_ << "' received duplicate message"
-                    //             << " for qpn=" << qpn << ". Expected " << expected_short_msg_id << " But received " << received_short_msg_id;
-                    //         PostRecvWr(qpn);
-                    //     } else {
-                    //         LOG(FATAL) << "Worker thread '" << this->tid_ << "' received unexpected message id"
-                    //             << " for qpn=" << qpn << ". Expected " << expected_short_msg_id << " But received " << received_msg_id;
-                    //     }
-                    //     stats_wrong_pkts_received += num_pkts_per_msg;
-                    //     continue;
-                    // }
+                    // Is this the message that we are expecting from this qpn?
+                    if(received_short_msg_id != expected_short_msg_id) {
+                        if(received_short_msg_id < expected_short_msg_id && received_short_msg_id % batch_num_msgs == expected_short_msg_id % batch_num_msgs) {
+                            DVLOG(3) << "Worker thread '" << this->tid_ << "' received duplicate message"
+                                << " for qpn=" << qpn << ". Expected " << expected_short_msg_id << " But received " << received_short_msg_id;
+                            PostRecvWr(qpn);
+                        } else {
+                            LOG(FATAL) << "Worker thread '" << this->tid_ << "' received unexpected message id"
+                                << " for qpn=" << qpn << ". Expected " << expected_short_msg_id << " But received " << received_short_msg_id;
+                        }
+                        stats_wrong_pkts_received += num_pkts_per_msg;
+                        continue;
+                    }
 
                     // This is a correct message, postprocess it.
                     void* message_start = static_cast<uint8_t*>(this->registered_buffer_ptr_) + qpn * msg_size;
@@ -290,7 +290,6 @@ void RdmaWorkerThread::operator()() {
                 PostSendWr((uint16_t)qpn, false);
                 stats_total_pkts_sent += num_pkts_per_msg; 
             }
-            
 #endif
         } // while (num_received_msgs < total_num_msgs && ctx.GetContextState() == Context::ContextState::RUNNING)
 
