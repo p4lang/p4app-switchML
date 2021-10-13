@@ -97,10 +97,10 @@ class RdmaWorkerThread {
      * this outstanding message.
      * 
      * @param qpn The qeueu pair number to post the send work request for.
-     * @param preprocess whether we need to preprocess this message or if its already been preprocessed
+     * @param is_retransmission whether we need to preprocess this message or if its already been preprocessed
      * for example when resending a message due to timeout.
      */
-    void PostSendWr(uint16_t qpn, bool preprocess=true);
+    void PostSendWr(uint16_t qpn, bool is_retransmission=false);
 
     /** Monotonically increasing counter to give unique IDs for each new worker thread **/
     static WorkerTid next_tid_;

@@ -179,10 +179,9 @@ void DummyWorkerThread::operator()() {
         this->ppp_->CleanupJobSlice();
         
         // Notify the ctx that the worker thread finished this job slice.
-        if(ctx.GetContextState() == Context::ContextState::RUNNING) {
-            DVLOG(2) << "Worker thread '" << this->tid_ << "' notifying job slice completion with job id: " << job_slice.job->id_  << ".";
-            ctx.NotifyJobSliceCompletion(this->tid_, job_slice);
-        }
+        // If the context exited then the notify call will simply fail and set the job to failed.
+        DVLOG_IF(2, num_packets_received == total_num_pkts) << "Worker thread '" << this->tid_ << "' notifying job slice completion with job id: " << job_slice.job->id_  << ".";
+        ctx.NotifyJobSliceCompletion(this->tid_, job_slice);
 
     } // while(ctx.GetContextState() == Context::ContextState::RUNNING)
 

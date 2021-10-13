@@ -118,6 +118,7 @@ bool FifoScheduler::GetJobSlice(WorkerTid worker_thread_id, JobSlice& job_slice)
 bool FifoScheduler::NotifyJobSliceCompletion(WorkerTid worker_thread_id, const JobSlice& job_slice){
     std::unique_lock<std::mutex> lock(this->access_mutex_);
     if(this->stopped_) {
+        job_slice.job->SetJobStatus(JobStatus::FAILED);
         return false;
     }
     int& finished_job_slices = this->finished_job_slices_.at(job_slice.job->id_);
@@ -136,8 +137,7 @@ void FifoScheduler::Stop() {
     this->barrier_.Destroy();
     // Set all the current jobs that haven't finished to failed.
     // This will also wakeup any thread waiting on a job.
-    for (size_t i = 0; i < this->queue_.size(); i++)
-    {
+    while(!this->queue_.empty()) {
         this->queue_.front()->SetJobStatus(JobStatus::FAILED);
         this->queue_.pop();
     }

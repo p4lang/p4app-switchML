@@ -96,7 +96,6 @@ bool Config::LoadFromFile(std::string path) {
         ("backend.rdma.device_name", po::value<std::string>(&this->backend_.rdma.device_name)->default_value("mlx5_0"))
         ("backend.rdma.device_port_id", po::value<uint16_t>(&this->backend_.rdma.device_port_id)->default_value(1))
         ("backend.rdma.gid_index", po::value<uint16_t>(&this->backend_.rdma.gid_index)->default_value(3))
-        ("backend.rdma.use_gdr", po::value<bool>(&this->backend_.rdma.use_gdr)->default_value(true))
     ;
     config_file_options.add(rdma_options);
 #endif
@@ -162,7 +161,7 @@ void Config::Validate() {
         uint64_t new_mop = outstanding_pkts_per_wt*this->general_.num_worker_threads;
         uint64_t new_mop2 = (outstanding_pkts_per_wt + 1)*this->general_.num_worker_threads;
         // Choose the new mop that minimizes the difference. Regardless if its bigger or smaller than the current mop.
-        if(this->general_.max_outstanding_packets - new_mop > new_mop2 - this->general_.max_outstanding_packets){
+        if(new_mop < this->general_.max_outstanding_packets && this->general_.max_outstanding_packets - new_mop > new_mop2 - this->general_.max_outstanding_packets){
             new_mop = new_mop2;
         }
         LOG(WARNING) << "general.max_outstanding_packets '" << this->general_.max_outstanding_packets << "' is not divisible by general.num_worker_threads '"
@@ -197,7 +196,7 @@ void Config::Validate() {
             uint64_t new_mop = outstanding_msgs_per_wt * this->general_.num_worker_threads * num_pkts_per_msg;
             uint64_t new_mop2 = (outstanding_msgs_per_wt+1) * this->general_.num_worker_threads * num_pkts_per_msg;
             // Choose the new mop that minimizes the difference. Regardless if its bigger or smaller than the current mop.
-            if(this->general_.max_outstanding_packets - new_mop > new_mop2 - this->general_.max_outstanding_packets){
+            if(new_mop < this->general_.max_outstanding_packets && this->general_.max_outstanding_packets - new_mop > new_mop2 - this->general_.max_outstanding_packets){
                 new_mop = new_mop2;
                 outstanding_msgs_per_wt++;
             }
@@ -273,7 +272,6 @@ void Config::PrintConfig() {
             << "\n    device_name = " << this->backend_.rdma.device_name
             << "\n    device_port_id = " << this->backend_.rdma.device_port_id
             << "\n    gid_index = " << this->backend_.rdma.gid_index
-            << "\n    use_gdr = " << this->backend_.rdma.use_gdr
 
             << "\n    --(derived)--"
             << "\n    num_pkts_per_msg = " <<  num_pkts_per_msg

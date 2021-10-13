@@ -228,11 +228,11 @@ void RdmaWorkerThread::operator()() {
                         if(received_short_msg_id < expected_short_msg_id && received_short_msg_id % batch_num_msgs == expected_short_msg_id % batch_num_msgs) {
                             DVLOG(3) << "Worker thread '" << this->tid_ << "' received duplicate message"
                                 << " for qpn=" << qpn << ". Expected " << expected_short_msg_id << " But received " << received_short_msg_id;
-                            PostRecvWr(qpn);
                         } else {
-                            LOG(FATAL) << "Worker thread '" << this->tid_ << "' received unexpected message id"
+                            DVLOG(3) << "Worker thread '" << this->tid_ << "' received unexpected message id"
                                 << " for qpn=" << qpn << ". Expected " << expected_short_msg_id << " But received " << received_short_msg_id;
                         }
+                        PostRecvWr(qpn);
                         stats_wrong_pkts_received += num_pkts_per_msg;
                         continue;
                     }
@@ -287,7 +287,7 @@ void RdmaWorkerThread::operator()() {
             if (qpn >= 0) {
                 stats_timeouts += num_pkts_per_msg; 
                 // Post send work request (no recv work request is posted and preprocess is set to false)
-                PostSendWr((uint16_t)qpn, false);
+                PostSendWr((uint16_t)qpn, true);
                 stats_total_pkts_sent += num_pkts_per_msg; 
             }
 #endif
@@ -303,10 +303,11 @@ void RdmaWorkerThread::operator()() {
         ctx.GetStats().AddTimeouts(this->tid_, stats_timeouts);
 #endif
         // Finally notify the ctx that the worker thread finished this job slice.
-        if(ctx.GetContextState() == Context::ContextState::RUNNING) {
-            DVLOG(2) << "Worker thread '" << this->tid_ << "' notifying job slice completion with job id: " << job_slice.job->id_  << ".";
-            ctx.NotifyJobSliceCompletion(this->tid_, job_slice);
-        }
+        // Notify the ctx that the worker thread finished this job slice.
+        // If the context exited then the notify call will simply fail and set the job to failed.
+        DVLOG_IF(2, num_received_msgs == total_num_msgs) << "Worker thread '" << this->tid_ << "' notifying job slice completion with job id: " << job_slice.job->id_  << ".";
+        ctx.NotifyJobSliceCompletion(this->tid_, job_slice);
+
     } // while(ctx.GetContextState() == Context::ContextState::RUNNING)
 }
 
@@ -314,7 +315,7 @@ void RdmaWorkerThread::PostRecvWr(uint16_t qpn) {
     this->backend_.GetConnection()->PostRecv(this->queue_pairs_[qpn], &this->recv_wrs_[qpn]);
 }
 
-void RdmaWorkerThread::PostSendWr(uint16_t qpn, bool preprocess) {
+void RdmaWorkerThread::PostSendWr(uint16_t qpn, bool is_retransmission) {
 
     uint64_t msg_size = this->config_.backend_.rdma.msg_numel * RDMA_SWITCH_ELEMENT_SIZE;
     // Point at start of this message's data
@@ -329,20 +330,21 @@ void RdmaWorkerThread::PostSendWr(uint16_t qpn, bool preprocess) {
         this->send_wrs_[qpn].send_flags = 0;
     }
 
-    // Flip the pool flag
-    this->send_wrs_[qpn].wr.rdma.rkey ^= 1;
+    if(!is_retransmission) {
+        // Flip the pool flag
+        this->send_wrs_[qpn].wr.rdma.rkey ^= 1;
 
-    // Set destination address equal to the address where we want to
-    // receive. We want to reuse the same buffer to send and recv
-    this->send_wrs_[qpn].wr.rdma.remote_addr = send_sges_[qpn].addr;
+        // Set destination address equal to the address where we want to
+        // receive. We want to reuse the same buffer to send and recv
+        this->send_wrs_[qpn].wr.rdma.remote_addr = send_sges_[qpn].addr;
 
-    // Use the first 16 bits of the message id as a sequence number in the immediate field.
-    // It will be sent back to check received messages for late, duplicated retrasmissions
-    // In addition to the message id, the immediate field will also carry the extra
-    // information needed by the prepostprocessor (Typically the exponenet).
-    this->send_wrs_[qpn].imm_data = this->msg_ids_[qpn] & 0xFFFF;
+        // Use the first 16 bits of the message id as a sequence number in the immediate field.
+        // It will be sent back to check received messages for late, duplicated retrasmissions
+        // In addition to the message id, the immediate field will also carry the extra
+        // information needed by the prepostprocessor (Typically the exponenet).
+        this->send_wrs_[qpn].imm_data = this->msg_ids_[qpn] & 0xFFFF;
 
-    if (preprocess) {    
+
         // Compute extra info address
         uint8_t* imm_data = static_cast<uint8_t*>((void*) & this->send_wrs_[qpn].imm_data);
         uint8_t* extra_info_ptr = imm_data + 2; // Select the third least significant byte.
@@ -352,13 +354,20 @@ void RdmaWorkerThread::PostSendWr(uint16_t qpn, bool preprocess) {
         // controlled quantization. But we don't need to do that unless we measure losses in accuracy upon
         // quantizing at the whole message scale.
         this->ppp_->PreprocessSingle(this->msg_ids_[qpn], message_start, extra_info_ptr);
-    }
 
-    DVLOG(3) << "Worker thread '" << this->tid_ << "' QP " << qpn << ":0x" << std::hex
-            << this->queue_pairs_[qpn]->qp_num << std::dec << " posting write from "
-            << (void*)this->send_sges_[qpn].addr << " length "
-            << this->send_sges_[qpn].length << " rkey/slot " << std::hex
-            << this->send_wrs_[qpn].wr.rdma.rkey << std::dec;
+        DVLOG(3) << "Worker thread '" << this->tid_ << "' QP " << qpn << ":0x" << std::hex
+                << this->queue_pairs_[qpn]->qp_num << std::dec << " posting write from "
+                << (void*)this->send_sges_[qpn].addr << " length "
+                << this->send_sges_[qpn].length << " rkey/slot " << std::hex
+                << this->send_wrs_[qpn].wr.rdma.rkey << std::dec;
+
+    } else {
+        DVLOG(3) << "Worker thread '" << this->tid_ << "' QP " << qpn << ":0x" << std::hex
+                << this->queue_pairs_[qpn]->qp_num << std::dec << " reposting write from "
+                << (void*)this->send_sges_[qpn].addr << " length "
+                << this->send_sges_[qpn].length << " rkey/slot " << std::hex
+                << this->send_wrs_[qpn].wr.rdma.rkey << std::dec;
+    }
 
     this->backend_.GetConnection()->PostSend(this->queue_pairs_[qpn], &this->send_wrs_[qpn]);
 

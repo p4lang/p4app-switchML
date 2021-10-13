@@ -92,6 +92,7 @@ class FifoScheduler : public switchml::Scheduler {
      * @param [in] job_slice The job slice that finished.
      * @return true If the job corresponding to this job slice has finished all its job slices.
      * @return false If there is still some job slices to be completed either by other worker threads.
+     * or if the scheduler has already stopped.
      */
     bool NotifyJobSliceCompletion(WorkerTid worker_thread_i, const JobSlice& job_slice) override;
 

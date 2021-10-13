@@ -221,14 +221,6 @@ struct RdmaBackendConfig {
      * 2: RoCEv1 with IP-based GID, 3: RoCEv2 with IP-based GID
      */
     uint16_t gid_index;
-
-    /**
-     * (Not implemented yet)
-     * Whether to try to use GPU Direct or not.
-     * In case the submitted job's data resides on the GPU, then using GPU Direct allows us to have our registerd buffer
-     * be also in GPU memory and directly send data from the GPU instead of having to copy it to a registered CPU buffer.
-     */
-    bool use_gdr;
 };
 #endif
 
