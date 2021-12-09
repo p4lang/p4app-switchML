@@ -31,6 +31,8 @@ The control plane requires python 3.8, so P4 Studio must be compiled using pytho
                          -DCMAKE_MODULE_PATH=$SDE/cmake \
                          -DP4_NAME=SwitchML \
                          -DP4_PATH=`pwd`/../switchml.p4
+    make SwitchML
+    make install
     ```
 
 2. Run the reference driver application:
