@@ -8,7 +8,8 @@ The benchmarks should be the go-to tool that ensures that the performance and th
 
 | Benchmark | Brief |
 |--|--|
-| allreduce_benchmark | The most complete benchmark, as it actually performs allreduce jobs thus testing the whole system. |
+| allreduce_benchmark | A benchmark that tests the whole system by submitting multiple all-reduce jobs to SwitchML. |
+| dnn_benchmark | A benchmark that imitates DNN training performing real allreduce communication but sleeping to simulate compute. This benchmark requires an extra CSV file that describes the structure of the DNN in terms of the size and backward and forward pass costs (In nanoseconds) for each layer in the DNN. It goes through the forward pass of each layer (sleeping) then launches an async allreduce job after each layer backward pass. It only synchronizes with an allreduce job if its result is needed for a layer in the forward pass of the next iteration. |
 
 All examples require that the client library is compiled and that the SwitchML configuration file is present when running.
 

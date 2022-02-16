@@ -41,6 +41,7 @@ INCDIR ?= $(SWITCHML_HOME)/include
 BINDIR ?= $(BUILDDIR)/bin
 OBJDIR ?= $(BUILDDIR)/obj
 AR_OBJDIR ?= $(OBJDIR)/allreduce_benchmark
+DNN_OBJDIR ?= $(OBJDIR)/dnn_benchmark
 SRCDIR ?= $(DEVROOT)/benchmarks
 
 # Compiler / linker flags
@@ -106,9 +107,11 @@ endif
 # Targets
 
 .phony: default
-default: allreduce_benchmark
+default: allreduce_benchmark dnn_benchmark
 
 allreduce_benchmark: $(BINDIR)/allreduce_benchmark
+
+dnn_benchmark: $(BINDIR)/dnn_benchmark
 
 $(BINDIR)/allreduce_benchmark: $(BINDIR) $(OBJDIR)
 ifeq ($(CUDA),1)
@@ -122,6 +125,19 @@ else
 	$(CXX) $(CXXFLAGS) $(INC) $(SRCDIR)/allreduce_benchmark/main.cc $(LDFLAGS) -o $(BINDIR)/allreduce_benchmark 
 endif
 
+$(BINDIR)/dnn_benchmark: $(BINDIR) $(OBJDIR)
+ifeq ($(CUDA),1)
+		mkdir -p $(DNN_OBJDIR)
+		# Compiling source
+		$(CXX) --compile $(CXXFLAGS) $(INC) -I $(CUDA_HOME)/include $(SRCDIR)/dnn_benchmark/main.cc -o $(DNN_OBJDIR)/cpu_main.o
+		# Linking object
+		$(NVCC) -dlink $(DNN_OBJDIR)/cpu_main.o -o $(DNN_OBJDIR)/gpu_main.o
+		$(CXX) $(CXXFLAGS) $(DNN_OBJDIR)/gpu_main.o $(DNN_OBJDIR)/cpu_main.o $(LDFLAGS) -o $(BINDIR)/dnn_benchmark 
+else
+		$(CXX) $(CXXFLAGS) $(INC) $(SRCDIR)/dnn_benchmark/main.cc $(LDFLAGS) -o $(BINDIR)/dnn_benchmark 
+endif
+
+
 $(OBJDIR):
 	mkdir -p $@
 
@@ -133,3 +149,5 @@ clean:
 	$(RM) $(BINDIR)/allreduce_benchmark
 	$(RM) -r $(AR_OBJDIR)
 	$(RM) $(BINDIR)/ppp_benchmark
+	$(RM) $(BINDIR)/dnn_benchmark
+	$(RM) -r $(DNN_OBJDIR)
