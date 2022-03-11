@@ -28,7 +28,7 @@ class Flag(IntEnum):
 
 class NextStepSelector(Control):
 
-    def __init__(self, target, gc, bfrt_info):
+    def __init__(self, target, gc, bfrt_info, folded_pipe):
         # Set up base class
         super(NextStepSelector, self).__init__(target, gc)
 
@@ -38,6 +38,8 @@ class NextStepSelector(Control):
             bfrt_info.table_get('pipe.Ingress.next_step_selector.next_step')
         ]
         self.table = self.tables[0]
+
+        self.folded_pipe = folded_pipe
 
         # Counters
         self.broadcast_counter = bfrt_info.table_get(
@@ -61,7 +63,7 @@ class NextStepSelector(Control):
         ''' Add default entries '''
 
         # Special recirculation ports used for harvest passes
-        port = {1: 452, 2: 324, 3: 448, 4: 196, 5: 192, 6: 68, 7: 64}
+        port = {1: 452, 2: 324, 3: 448, 4: 196, 5: 192, 6: 64, 7: 68}
 
         # yapf: disable
         entries = [
@@ -83,41 +85,44 @@ class NextStepSelector(Control):
             ## 512B packets not supported at the moment
             ( PacketSize.MTU_512, None,                None,       None, None, 5, 'drop', None)]
 
-        ## 1024B packets
+        if self.folded_pipe:
+            ## 1024B packets
+            entries.extend([
+                ## Pipe 0, packet not seen before -> pipe 1 (load balance on worker id)
+                (PacketSize.MTU_1024,    i, PacketType.CONSUME0,       None,    0, 6, 'recirculate_for_CONSUME1', (1 << 7) + i * 4)
+                for i in range(16)])
+            entries.extend([
+                ## Pipe 0, retransmitted packet to a full slot -> pipe 1
+                ## Run through the same path as novel packets (do not skip to harvest) to ensure ordering
+                (PacketSize.MTU_1024,    i, PacketType.CONSUME0, Flag.FIRST, None, 7, 'recirculate_for_CONSUME1', (1 << 7) + i * 4)
+                for i in range(16)])
+            entries.extend([
+                ## Drop other CONSUME0 packets
+                (PacketSize.MTU_1024, None, PacketType.CONSUME0,       None, None, 8, 'drop', None),
+                ## Pipe 1 -> pipe 2
+                (PacketSize.MTU_1024, None, PacketType.CONSUME1,       None, None, 9, 'recirculate_for_CONSUME2_same_port_next_pipe', None),
+                ## Pipe 2 -> pipe 3
+                (PacketSize.MTU_1024, None, PacketType.CONSUME2,       None, None, 10, 'recirculate_for_CONSUME3_same_port_next_pipe', None),
+                ## Pipe 4
+                ## For CONSUME3 packets that are the last packet, recirculate for harvest
+                ## The last pass is a combined consume/harvest pass, so skip directly to HARVEST1
+                (PacketSize.MTU_1024, None, PacketType.CONSUME3,  Flag.LAST, None, 11, 'recirculate_for_HARVEST1', port[1]),
+                ## Just consume any CONSUME3 packets if they're not last and we haven't seen them before
+                (PacketSize.MTU_1024, None, PacketType.CONSUME3,       None,    0, 12, 'finish_consume', None),
+                ## CONSUME3 packets that are retransmitted packets to a full slot -> recirculate for harvest
+                (PacketSize.MTU_1024, None, PacketType.CONSUME3, Flag.FIRST, None, 13, 'recirculate_for_HARVEST1', port[1]),
+                ## Drop others
+                (PacketSize.MTU_1024, None, PacketType.CONSUME3,       None, None, 14, 'drop', None),
+                ## Harvesting 128B at a time
+                (PacketSize.MTU_1024, None, PacketType.HARVEST0,       None, None, 15, 'recirculate_for_HARVEST1', port[1]),
+                (PacketSize.MTU_1024, None, PacketType.HARVEST1,       None, None, 16, 'recirculate_for_HARVEST2', port[2]),
+                (PacketSize.MTU_1024, None, PacketType.HARVEST2,       None, None, 17, 'recirculate_for_HARVEST3', port[3]),
+                (PacketSize.MTU_1024, None, PacketType.HARVEST3,       None, None, 18, 'recirculate_for_HARVEST4', port[4]),
+                (PacketSize.MTU_1024, None, PacketType.HARVEST4,       None, None, 19, 'recirculate_for_HARVEST5', port[5]),
+                (PacketSize.MTU_1024, None, PacketType.HARVEST5,       None, None, 20, 'recirculate_for_HARVEST6', port[6]),
+                (PacketSize.MTU_1024, None, PacketType.HARVEST6,       None, None, 21, 'recirculate_for_HARVEST7', port[7])])
+
         entries.extend([
-            ## Pipe 0, packet not seen before -> pipe 1 (load balance on worker id)
-            (PacketSize.MTU_1024,    i, PacketType.CONSUME0,       None,    0, 6, 'recirculate_for_CONSUME1', (1 << 7) + i * 4)
-            for i in range(16)])
-        entries.extend([
-            ## Pipe 0, retransmitted packet to a full slot -> pipe 1
-            ## Run through the same path as novel packets (do not skip to harvest) to ensure ordering
-            (PacketSize.MTU_1024,    i, PacketType.CONSUME0, Flag.FIRST, None, 7, 'recirculate_for_CONSUME1', (1 << 7) + i * 4)
-            for i in range(16)])
-        entries.extend([
-            ## Drop other CONSUME0 packets
-            (PacketSize.MTU_1024, None, PacketType.CONSUME0,       None, None, 8, 'drop', None),
-            ## Pipe 1 -> pipe 2
-            (PacketSize.MTU_1024, None, PacketType.CONSUME1,       None, None, 9, 'recirculate_for_CONSUME2_same_port_next_pipe', None),
-            ## Pipe 2 -> pipe 3
-            (PacketSize.MTU_1024, None, PacketType.CONSUME2,       None, None, 10, 'recirculate_for_CONSUME3_same_port_next_pipe', None),
-            ## Pipe 4
-            ## For CONSUME3 packets that are the last packet, recirculate for harvest
-            ## The last pass is a combined consume/harvest pass, so skip directly to HARVEST1
-            (PacketSize.MTU_1024, None, PacketType.CONSUME3,  Flag.LAST, None, 11, 'recirculate_for_HARVEST1', port[1]),
-            ## Just consume any CONSUME3 packets if they're not last and we haven't seen them before
-            (PacketSize.MTU_1024, None, PacketType.CONSUME3,       None,    0, 12, 'finish_consume', None),
-            ## CONSUME3 packets that are retransmitted packets to a full slot -> recirculate for harvest
-            (PacketSize.MTU_1024, None, PacketType.CONSUME3, Flag.FIRST, None, 13, 'recirculate_for_HARVEST1', port[1]),
-            ## Drop others
-            (PacketSize.MTU_1024, None, PacketType.CONSUME3,       None, None, 14, 'drop', None),
-            ## Harvesting 128B at a time
-            (PacketSize.MTU_1024, None, PacketType.HARVEST0,       None, None, 15, 'recirculate_for_HARVEST1', port[1]),
-            (PacketSize.MTU_1024, None, PacketType.HARVEST1,       None, None, 16, 'recirculate_for_HARVEST2', port[2]),
-            (PacketSize.MTU_1024, None, PacketType.HARVEST2,       None, None, 17, 'recirculate_for_HARVEST3', port[3]),
-            (PacketSize.MTU_1024, None, PacketType.HARVEST3,       None, None, 18, 'recirculate_for_HARVEST4', port[4]),
-            (PacketSize.MTU_1024, None, PacketType.HARVEST4,       None, None, 19, 'recirculate_for_HARVEST5', port[5]),
-            (PacketSize.MTU_1024, None, PacketType.HARVEST5,       None, None, 20, 'recirculate_for_HARVEST6', port[6]),
-            (PacketSize.MTU_1024, None, PacketType.HARVEST6,       None, None, 21, 'recirculate_for_HARVEST7', port[7]),
             ## Harvest pass 7: final pass
             ## Read final 128B and broadcast any HARVEST packets that are not
             ## retransmitted and are the last packet

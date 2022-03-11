@@ -80,20 +80,22 @@ class SwitchML(object):
         #sys.exit(1)
         os.kill(os.getpid(), signal.SIGTERM)
 
-    def setup(
-        self,
-        program,
-        switch_mac,
-        switch_ip,
-        bfrt_ip,
-        bfrt_port,
-        ports_file,
-    ):
+    def setup(self,
+              program,
+              switch_mac,
+              switch_ip,
+              bfrt_ip,
+              bfrt_port,
+              ports_file,
+              folded_pipe=False):
 
         # Device 0
         self.dev = 0
         # Target all pipes
         self.target = gc.Target(self.dev, pipe_id=0xFFFF)
+        # Folded pipe
+        self.folded_pipe = folded_pipe
+
         # Connect to BFRT server
         try:
             interface = gc.ClientInterface('{}:{}'.format(bfrt_ip, bfrt_port),
@@ -118,47 +120,61 @@ class SwitchML(object):
             # Ports table
             self.ports = Ports(self.target, gc, self.bfrt_info)
 
-            # Enable loopback on front panel ports
-            loopback_ports = (
-                [64] +  # Pipe 0 CPU ethernet port
-                # Pipe 0: all 16 front-panel ports
-                #list(range(  0,  0+64,4)) +
-                # Pipe 1: all 16 front-panel ports
-                list(range(128, 128 + 64, 4)) +
-                # Pipe 2: all 16 front-panel ports
-                list(range(256, 256 + 64, 4)) +
-                # Pipe 3: all 16 front-panel ports
-                list(range(384, 384 + 64, 4)))
-            print('Setting {} front panel ports in loopback mode'.format(
-                len(loopback_ports)))
-            self.ports.set_loopback_mode(loopback_ports)
+            if self.folded_pipe:
+                try:
+                    # Enable loopback on front panel ports
+                    loopback_ports = (
+                        [64] +  # Pipe 0 CPU ethernet port
+                        # Pipe 0: all 16 front-panel ports
+                        #list(range(  0,  0+64,4)) +
+                        # Pipe 1: all 16 front-panel ports
+                        list(range(128, 128 + 64, 4)) +
+                        # Pipe 2: all 16 front-panel ports
+                        list(range(256, 256 + 64, 4)) +
+                        # Pipe 3: all 16 front-panel ports
+                        list(range(384, 384 + 64, 4)))
+                    print(
+                        'Setting {} front panel ports in loopback mode'.format(
+                            len(loopback_ports)))
+                    self.ports.set_loopback_mode(loopback_ports)
 
-            # Enable loopback on PktGen ports
-            pktgen_ports = [192, 448]
+                    # Enable loopback on PktGen ports
+                    pktgen_ports = [192, 448]
 
-            if not self.ports.get_loopback_mode_pktgen(pktgen_ports):
-                # Not all PktGen ports are in loopback mode
+                    if not self.ports.get_loopback_mode_pktgen(pktgen_ports):
+                        # Not all PktGen ports are in loopback mode
 
-                print('\nYou must \'remove\' the ports in the BF ucli:\n')
-                for p in pktgen_ports:
-                    print('    bf-sde> dvm rmv_port 0 {}'.format(p))
-                input('\nPress Enter to continue...')
+                        print(
+                            '\nYou must \'remove\' the ports in the BF ucli:\n')
+                        for p in pktgen_ports:
+                            print('    bf-sde> dvm rmv_port 0 {}'.format(p))
+                        input('\nPress Enter to continue...')
 
-                if not self.ports.set_loopback_mode_pktgen(pktgen_ports):
+                        if not self.ports.set_loopback_mode_pktgen(
+                                pktgen_ports):
+                            self.critical_error(
+                                'Failed setting front panel ports in loopback mode'
+                            )
+
+                        print('\nAdd the ports again:\n')
+                        for p in pktgen_ports:
+                            print(
+                                '    bf-sde> dvm add_port 0 {} 100 0'.format(p))
+                        input('\nPress Enter to continue...')
+
+                        if not self.ports.get_loopback_mode_pktgen(
+                                pktgen_ports):
+                            self.critical_error(
+                                'Front panel ports are not in loopback mode')
+
+                except gc.BfruntimeReadWriteRpcException:
                     self.critical_error(
-                        'Failed setting front panel ports in loopback mode')
-
-                print('\nAdd the ports again:\n')
-                for p in pktgen_ports:
-                    print('    bf-sde> dvm add_port 0 {} 100 0'.format(p))
-                input('\nPress Enter to continue...')
-
-                if not self.ports.get_loopback_mode_pktgen(pktgen_ports):
-                    self.critical_error(
-                        'Front panel ports are not in loopback mode')
+                        'Error while setting ports in loopback mode. \
+                        If the switch has only 2 pipes, the folded pipeline cannot be enabled.'
+                    )
 
             # Packet Replication Engine table
-            self.pre = PRE(self.target, gc, self.bfrt_info, self.cpu_port)
+            self.pre = PRE(self.target, gc, self.bfrt_info)
 
             # Setup tables
             # Forwarder
@@ -187,7 +203,8 @@ class SwitchML(object):
                 self.processors.append(p)
             # Next step selector
             self.next_step_selector = NextStepSelector(self.target, gc,
-                                                       self.bfrt_info)
+                                                       self.bfrt_info,
+                                                       self.folded_pipe)
             # RDMA sender
             self.rdma_sender = RDMASender(self.target, gc, self.bfrt_info)
             # UDP sender
@@ -209,7 +226,9 @@ class SwitchML(object):
             self.cli.setup(self, prompt='SwitchML', name='SwitchML controller')
 
             # Set up gRPC server
-            self.grpc_server = GRPCServer(ip='[::]', port=50099)
+            self.grpc_server = GRPCServer(ip='[::]',
+                                          port=50099,
+                                          folded_pipe=self.folded_pipe)
 
             # Run event loop for gRPC server in a separate thread
             # limit concurrency to 1 to avoid synchronization problems in the BFRT interface
@@ -620,6 +639,11 @@ if __name__ == '__main__':
         default='ports.yaml',
         help=
         'YAML file describing machines connected to ports. Default: ports.yaml')
+    argparser.add_argument(
+        '--enable-folded-pipe',
+        default=False,
+        action='store_true',
+        help='Enable the folded pipeline (requires a 4 pipes switch)')
     argparser.add_argument('--log-level',
                            default='INFO',
                            choices=['ERROR', 'WARNING', 'INFO', 'DEBUG'],
@@ -652,7 +676,7 @@ if __name__ == '__main__':
 
     ctrl = SwitchML()
     ctrl.setup(args.program, args.switch_mac, args.switch_ip, args.bfrt_ip,
-               args.bfrt_port, args.ports)
+               args.bfrt_port, args.ports, args.enable_folded_pipe)
 
     # Start controller
     ctrl.run()

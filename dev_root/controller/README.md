@@ -56,6 +56,7 @@ The optional arguments are the following:
 | --switch-mac SWITCH_MAC | MAC address of the switch | 00:11:22:33:44:55 |
 | --switch-ip SWITCH_IP | IP address of switch | 10.0.0.254 |
 | --ports FILE | YAML file describing machines connected to ports | ports.yaml |
+| --enable-folded-pipe | Enable the folded pipeline (requires a 4 pipes switch) | disabled |
 | --log-level LEVEL | Logging level: ERROR, WARNING, INFO, DEBUG | INFO |
 
 

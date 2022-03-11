@@ -30,12 +30,13 @@ from common import PacketSize
 class GRPCServer(switchml_pb2_grpc.SessionServicer,
                  switchml_pb2_grpc.SyncServicer):
 
-    def __init__(self, ip='[::]', port=50099):
+    def __init__(self, ip='[::]', port=50099, folded_pipe=False):
 
         self.log = logging.getLogger(__name__)
 
         self.ip = ip
         self.port = port
+        self.folded_pipe = folded_pipe
 
         # Event to stop the server
         self._stopped = asyncio.Event()
@@ -212,6 +213,13 @@ class GRPCServer(switchml_pb2_grpc.SessionServicer,
                 ipv4_str, request.rkey,
                 str(PacketSize(request.packet_size)).split('.')[1][4:],
                 request.message_size, request.qpns, request.psns))
+
+        if not self.folded_pipe and PacketSize(
+                request.packet_size) == PacketSize.MTU_1024:
+            self.log.error(
+                "Processing 1024B per packet requires a folded pipeline. Using 256B payload."
+            )
+            request.packet_size = int(PacketSize.MTU_256)
 
         if not self.ctrl:
             # This is a test, return the received parameters

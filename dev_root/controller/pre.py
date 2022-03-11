@@ -20,7 +20,7 @@ from bfrt_grpc.bfruntime_pb2 import TableModIncFlag
 
 class PRE(Control):
 
-    def __init__(self, target, gc, bfrt_info, cpu_port):
+    def __init__(self, target, gc, bfrt_info):
         # Set up base class
         super(PRE, self).__init__(target, gc)
 
@@ -39,11 +39,8 @@ class PRE(Control):
         self.node = self.tables[1]
         self.port = self.tables[5]
 
-        self.cpu_port = cpu_port
-
         # Clear tables and add defaults
         self._clear()
-        self.add_default_entries()
 
     def _clear(self):
         ''' Remove all existing multicast groups and nodes '''
@@ -56,18 +53,6 @@ class PRE(Control):
         resp = self.node.entry_get(self.target, flags={'from_hw': False})
         for _, k in resp:
             self.node.entry_del(self.target, [k])
-
-    def add_default_entries(self):
-        ''' Set CPU port '''
-
-        self.log.info('CPU port: {}'.format(self.cpu_port))
-
-        self.port.entry_add(self.target, [
-            self.port.make_key([self.gc.KeyTuple('$DEV_PORT', self.cpu_port)])
-        ], [
-            self.port.make_data(
-                [self.gc.DataTuple('$COPY_TO_CPU_PORT_ENABLE', bool_val=True)])
-        ])
 
     def add_multicast_group(self, mgid):
         ''' Add an empty multicast group.
