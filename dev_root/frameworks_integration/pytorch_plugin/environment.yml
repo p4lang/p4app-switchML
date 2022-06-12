@@ -1,0 +1,32 @@
+# SwitchML Project
+# @file environment.yml
+# @brief A simple valid pytorch environment that switchml can integrate into.
+
+channels:
+  - conda-forge
+  - defaults
+  - pytorch
+
+dependencies:
+  - python 3.8.1
+  - pip
+  - cudatoolkit=11.7
+  - magma-cuda117
+  - pytorch=1.11
+  - cudnn
+  - astunparse 
+  - numpy
+  - ninja
+  - pyyaml
+  - setuptools
+  - cmake
+  - cffi
+  - typing_extensions 
+  - future
+  - six
+  - requests
+  - dataclasses
+  - openmpi
+  - mpi4py
+  - mkl
+  - mkl-include

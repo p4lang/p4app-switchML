@@ -2,18 +2,19 @@
 
 The benchmarks directory includes multiple benchmarks to test and measure the performance of the different components of SwitchML or of the system as a whole.
 
-The benchmarks should be the go-to tool that ensures that the performance and the accuracy of SwitchML remains as expected after any change.
+The benchmarks should be the go-to tool for ensuring that the performance and the accuracy of SwitchML remains as expected after any change.
 
 ## 1. Benchmarks list
 
 | Benchmark | Brief |
 |--|--|
-| allreduce_benchmark | A benchmark that tests the whole system by submitting multiple all-reduce jobs to SwitchML. |
-| dnn_benchmark | A benchmark that imitates DNN training performing real allreduce communication but sleeping to simulate compute. This benchmark requires an extra CSV file that describes the structure of the DNN in terms of the size and backward and forward pass costs (In nanoseconds) for each layer in the DNN. It goes through the forward pass of each layer (sleeping) then launches an async allreduce job after each layer backward pass. It only synchronizes with an allreduce job if its result is needed for a layer in the forward pass of the next iteration. |
+| allreduce_benchmark | A c++ microbenchmark that tests the whole switchml stack by directly submitting multiple all-reduce jobs to SwitchML. |
+| dnn_benchmark | A c++ benchmark that imitates DNN training performing real allreduce communication but sleeping to simulate compute. This benchmark requires an extra CSV file that describes the structure of the DNN in terms of the size and backward and forward pass costs (In nanoseconds) for each layer in the DNN. It goes through the forward pass of each layer (sleeping) then launches an async allreduce job after each layer backward pass. It only synchronizes with an allreduce job if its result is needed for a layer in the forward pass of the next iteration. |
+| allreduce_pytorch_benchmark | A python microbenchmark that tests the whole switchml stack *through pytorch* by submitting multiple all-reduce jobs to SwitchML. This benchmark can also be used to test all different distributed backends from pytorch to serve as baselines. |
 
-All examples require that the client library is compiled and that the SwitchML configuration file is present when running.
+All c++ benchmarks require the compilation of the client library and that the SwitchML configuration file be present when running.
 
-## 2. Compiling
+## 2. Compiling (C++ benchmarks)
 
 To compile a benchmark, simply run (Assuming you are inside the benchmarks directory):
 
@@ -27,7 +28,7 @@ By default, the benchmark executables will be found in
 
     dev_root/build/bin/
 
-### 2.1 Build variables
+### 2.1 Build variables (C++ benchmarks)
 
 The following variables can all be passed to the benchmarks makefile to control the build.
 
