@@ -44,7 +44,7 @@ class Ports(object):
         self.loopback_ports = []
 
         # PktGen table to configure pktgen ports in loopback mode
-        self.pktgen_port_cfg_table = bfrt_info.table_get('$PKTGEN_PORT_CFG')
+        self.pktgen_port_cfg_table = bfrt_info.table_get('tf1.pktgen.port_cfg')
 
     def get_dev_port(self, fp_port, lane):
         ''' Convert front-panel port to dev port.

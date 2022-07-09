@@ -3,7 +3,7 @@
 The SwitchML P4 program is written in P4-16 for the [Tofino Native Architecture (TNA)](https://github.com/barefootnetworks/Open-Tofino) and the controller uses the Barefoot Runtime Interface (BRI) to program the switch.
 
 ## 1. Requirements
-The P4 code has been tested on Intel P4 Studio 9.6.0.
+The P4 code has been tested on Intel P4 Studio 9.9.0.
 
 For details on how to obtain and compile P4 Studio, we refer you to the official [Intel documentation](https://www.intel.com/content/www/us/en/products/network-io/programmable-ethernet-switch.html).
 
@@ -67,4 +67,4 @@ With RDMA, the packet layout is slightly different depending on which part of a 
 The P4 program does not check nor update the ICRC value, so the end-host servers should disable ICRC checking.
 
 ## References
-<a id="1">[1]</a> Intel® P4 Studio Software Development Environment (SDE) 9.6.0 Installation Guide
+<a id="1">[1]</a> Intel® P4 Studio Software Development Environment (SDE) Installation Guide
